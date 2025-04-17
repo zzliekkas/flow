@@ -1,0 +1,73 @@
+# Flow应用配置示例
+
+app:
+  name: "flow-app"
+  version: "0.1.0"
+  debug: true
+  
+server:
+  port: 8080
+  host: "0.0.0.0"
+  read_timeout: 10
+  write_timeout: 10
+  idle_timeout: 120
+  
+log:
+  level: "info"
+  format: "text"  # text或json
+  output: "stdout"  # stdout或文件路径
+  
+cors:
+  enabled: true
+  allow_origins:
+    - "*"
+  allow_methods:
+    - "GET"
+    - "POST"
+    - "PUT"
+    - "DELETE"
+    - "OPTIONS"
+  allow_headers:
+    - "Origin"
+    - "Content-Type"
+    - "Accept"
+    - "Authorization"
+  max_age: 86400
+
+# 数据库配置
+database:
+  default: "mysql"
+  connections:
+    mysql:
+      driver: "mysql"
+      host: "localhost"
+      port: 3306
+      database: "flow_db"
+      username: "root"
+      password: "password"
+      charset: "utf8mb4"
+      max_idle_conns: 10
+      max_open_conns: 100
+      
+    postgres:
+      driver: "postgres"
+      host: "localhost"
+      port: 5432
+      database: "flow_db"
+      username: "postgres"
+      password: "password"
+      sslmode: "disable"
+      max_idle_conns: 10
+      max_open_conns: 100
+      
+    sqlite:
+      driver: "sqlite"
+      database: "flow.db"
+      
+# 缓存配置
+cache:
+  default: "memory"
+  stores:
+    memory:
+      driver: "memory"
+      size: 10000 

@@ -1,0 +1,22 @@
+app:
+  name: "flow-cache-demo"
+  version: "0.1.0"
+  debug: true
+
+server:
+  port: 8080
+  host: "0.0.0.0"
+
+cache:
+  default: "memory"
+  stores:
+    memory:
+      driver: "memory"
+      ttl: "5m"
+    redis:
+      driver: "redis"
+      host: "localhost"
+      port: 6379
+      database: 0
+      prefix: "flow:"
+      ttl: "10m" 
