@@ -1,13 +1,14 @@
 package docs
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/zzliekkas/flow/app"
-	"github.com/zzliekkas/flow/utils"
 )
 
 // DocumentationGenerator 是整体文档生成器，协调各种类型的文档生成
@@ -342,7 +343,7 @@ func (g *DocumentationGenerator) generateDocUI() error {
 	}
 
 	// 复制UI资源到输出目录
-	if err := utils.CopyDir(g.uiDir, g.outputDir); err != nil {
+	if err := CopyDir(g.uiDir, g.outputDir); err != nil {
 		return fmt.Errorf("复制UI资源失败: %w", err)
 	}
 
@@ -703,9 +704,21 @@ go run cmd/myproject/main.go serve</code></pre>
 </html>
 `,
 		g.title,
-		g.customCSS != "" ? `<link rel="stylesheet" href="styles/custom.css">` : "",
-		g.customJS != "" ? `<script src="scripts/custom.js"></script>` : "",
-		g.gaID != "" ? fmt.Sprintf(`
+		func() string {
+			if g.customCSS != "" {
+				return `<link rel="stylesheet" href="styles/custom.css">`
+			}
+			return ""
+		}(),
+		func() string {
+			if g.customJS != "" {
+				return `<script src="scripts/custom.js"></script>`
+			}
+			return ""
+		}(),
+		func() string {
+			if g.gaID != "" {
+				return fmt.Sprintf(`
   <!-- Global site tag (gtag.js) - Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=%s"></script>
   <script>
@@ -713,13 +726,21 @@ go run cmd/myproject/main.go serve</code></pre>
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
     gtag('config', '%s');
-  </script>`, g.gaID, g.gaID) : "",
+  </script>`, g.gaID, g.gaID)
+			}
+			return ""
+		}(),
 		g.projectName,
 		g.projectName,
 		g.description,
 		g.version,
 		g.generateDocLinks(),
-		g.footer != "" ? g.footer : fmt.Sprintf("© %d %s. 保留所有权利。", utils.CurrentYear(), g.projectName))
+		func() string {
+			if g.footer != "" {
+				return g.footer
+			}
+			return fmt.Sprintf("© %d %s. 保留所有权利。", time.Now().Year(), g.projectName)
+		}())
 
 	return os.WriteFile(filepath.Join(g.uiDir, "index.html"), []byte(indexContent), 0644)
 }
@@ -830,10 +851,10 @@ func (g *DocumentationGenerator) generateNavigation() error {
 	}
 
 	// 转换为JSON
-	jsonData, err := utils.ToJSON(navigation)
+	jsonData, err := json.Marshal(navigation)
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(filepath.Join(g.uiDir, "navigation.json"), []byte(jsonData), 0644)
-} 
+	return os.WriteFile(filepath.Join(g.uiDir, "navigation.json"), jsonData, 0644)
+}
