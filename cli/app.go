@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/zzliekkas/flow/cli/banner"
 )
 
 // App 表示CLI应用程序
@@ -57,6 +58,16 @@ func (a *App) AddCommand(cmd *cobra.Command) {
 
 // Run 运行CLI应用程序
 func (a *App) Run() error {
+	// 检查环境变量中的banner大小设置
+	bannerSize := os.Getenv("FLOW_BANNER_SIZE")
+	if bannerSize == "" {
+		// 默认使用small大小
+		banner.Print(a.Version, a.Description)
+	} else {
+		// 用户指定了大小
+		banner.PrintWithSize(a.Version, a.Description, bannerSize)
+	}
+
 	// 获取可执行文件名称
 	executable := filepath.Base(os.Args[0])
 
