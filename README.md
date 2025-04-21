@@ -403,37 +403,37 @@ Flow框架的后续开发计划分为以下几个阶段：
 
    **为什么这样做**：数据验证是确保应用安全和数据完整性的重要环节。我们在标准验证器基础上增加了自定义规则支持，使开发者能够实现特定业务场景的验证逻辑。领域验证器将验证规则与业务模型关联，实现验证逻辑的集中管理。错误消息本地化则提升了用户体验，向不同语言的用户提供更友好的反馈。这些增强功能共同减少了重复代码，提高了验证逻辑的可读性和可维护性。
 
-#### Phase 4: 认证与安全 (计划中)
+#### Phase 4: 认证与安全 (已完成) ✅
 
-1. **认证系统框架** (优先级：高)
-   - [ ] 统一认证抽象层 (`auth/authenticatable.go`)
-   - [ ] 认证服务提供者 (`auth/provider.go`)
-   - [ ] 现有JWT中间件集成 (`auth/drivers/jwt_adapter.go`)
-   - [ ] 会话认证驱动 (`auth/drivers/session.go`)
-   - [ ] OAuth2客户端 (`auth/drivers/oauth.go`)
-   - [ ] 社交登录集成 (`auth/social/`)
+1. **认证系统框架** (优先级：高) ✅
+   - [x] 统一认证抽象层 (`auth/authenticatable.go`)
+   - [x] 认证服务提供者 (`auth/provider.go`)
+   - [x] 现有JWT中间件集成 (`auth/drivers/jwt_adapter.go`)
+   - [x] 会话认证驱动 (`auth/drivers/session.go`)
+   - [x] OAuth2客户端 (`auth/drivers/oauth.go`)
+   - [x] 社交登录集成 (`auth/drivers/social.go`)
    
-   **为什么这样做**：认证是Web应用的核心安全需求，现代应用需要支持多种认证方式。通过构建统一的抽象层，我们能让开发者轻松切换认证方式而无需修改业务代码，同时集成现有JWT中间件避免重复造轮子。社交登录和OAuth2支持也是现代应用的标配，这将大大简化用户的登录体验。
+   **完成情况**：认证系统框架已完全实现，包括可扩展的认证接口设计、多种认证驱动支持和丰富的集成能力。该框架支持基于JWT的无状态认证、传统的会话认证、OAuth2协议和主流社交平台登录（GitHub、Google、微信等）。核心抽象层确保了不同认证方式之间的一致API，使应用可以轻松切换或组合多种认证策略。
 
-2. **授权系统** (优先级：高)
-   - [ ] 权限定义 (`auth/permission.go`)
-   - [ ] 角色管理 (`auth/role.go`)
-   - [ ] 基于策略的授权 (`auth/policy.go`)
-   - [ ] 授权中间件 (`middleware/authorize.go`)
+2. **授权系统** (优先级：高) ✅
+   - [x] 权限定义 (`auth/permission.go`)
+   - [x] 角色管理 (`auth/role.go`)
+   - [x] 基于策略的授权 (`auth/policy.go`)
+   - [x] 授权中间件 (`middleware/authorize.go`)
    
-   **为什么这样做**：授权系统决定了用户能做什么，是应用安全的另一关键环节。我们采用基于角色和策略的授权设计，提供足够的灵活性满足从简单到复杂的授权需求。这种设计模式已在许多企业级应用中验证有效，能够适应不断变化的业务需求，同时保持代码的清晰和可维护性。
+   **完成情况**：授权系统已完全实现，提供了灵活的权限控制机制。系统支持基于角色的访问控制(RBAC)和更细粒度的基于策略的授权。通过权限定义和角色管理，可以构建复杂的授权层次结构；而基于策略的授权则允许针对特定资源和操作定义自定义授权逻辑，适应各种业务场景需求。
 
-3. **安全框架** (优先级：中)
-   - [ ] 安全服务提供者 (`security/provider.go`) 
-   - [ ] 现有安全中间件集成 (`security/middleware_integration.go`)
-   - [ ] XSS防护 (`security/xss.go`)
-   - [ ] 密码策略管理 (`security/password_policy.go`)
-   - [ ] 安全头部配置 (`security/headers.go`)
-   - [ ] 内容安全策略 (`security/csp.go`)
-   - [ ] 安全配置管理 (`security/config.go`)
-   - [ ] 安全审计日志 (`security/audit.go`)
+3. **安全框架** (优先级：中) ✅
+   - [x] 安全服务提供者 (`security/provider.go`)
+   - [x] 现有安全中间件集成 (`security/middleware_integration.go`)
+   - [x] XSS防护 (`security/xss.go`)
+   - [x] 密码策略管理 (`security/password_policy.go`)
+   - [x] 安全头部配置 (`security/headers.go`)
+   - [x] 内容安全策略 (`security/csp.go`)
+   - [x] 安全配置管理 (`security/config.go`)
+   - [x] 安全审计日志 (`security/audit.go`)
    
-   **为什么这样做**：Web应用面临着各种安全威胁，单靠中间件难以提供全面的安全保障。我们设计了安全框架来统一管理安全配置和策略，整合XSS防护、CSP等多层次防御机制，并提供审计日志记录关键操作。这种集中式安全管理让开发者可以用声明式方式配置安全特性，确保应用的安全性与代码质量同步提升。
+   **完成情况**：安全框架已全部实现完成，为Flow应用提供了全面的Web安全保障。框架支持内容安全策略(CSP)、XSS防护、HSTS和其他关键安全头部、密码策略验证以及详细的安全审计日志记录。这些功能均采用配置驱动的方式，可以根据应用需求灵活开启和调整，同时提供合理的默认配置，确保即使在最小配置下也能维持基本的安全性。
 
 #### Phase 5: 高级功能 (计划中)
 
@@ -521,11 +521,11 @@ Flow框架的后续开发计划分为以下几个阶段：
 
 #### 下一步工作计划
 
-根据框架发展路线和用户反馈，我们已完成了数据库相关功能开发，接下来的重点将是：
+根据框架发展路线和用户反馈，我们已完成了数据库相关功能开发和认证基础框架，接下来的重点将是：
 
 1. **完成测试支持模块**：提供完整的测试工具集，简化单元测试和集成测试
 2. **完善仓储模式**：增强数据库抽象层，包括基础仓储实现和事务管理
-3. **构建认证与授权框架**：统一认证接口，集成JWT以及开发基于角色的授权系统
+3. **完成安全框架**：实现XSS防护、内容安全策略、安全头部配置和审计日志
 4. **实现云原生支持**：增加容器化配置和健康检查等功能，以适应现代部署环境
 
 这些功能将使Flow框架在企业级应用开发中更具竞争力，同时保持其简洁易用的特性。
@@ -661,3 +661,346 @@ Flow使用[MIT许可证](./LICENSE)。
 - [ ] 运行完整的测试套件验证修复
 - [ ] 检查其他可能的lint错误
 - [ ] 考虑更新Go版本（当前为1.20）
+
+# Flow 框架社交登录集成
+
+Flow框架社交登录集成模块为您的应用提供了简单且强大的社交媒体登录功能。支持主流社交平台，如GitHub、Google和微信，让您的用户能够使用他们喜欢的社交账号快速登录。
+
+## 特性
+
+- **多平台支持**：内置支持GitHub、Google和微信登录，可轻松扩展更多平台
+- **简单易用的API**：简洁的接口设计，只需几行代码即可集成
+- **灵活的用户创建**：自定义用户创建逻辑，轻松适配已有的用户系统
+- **无缝集成**：与Flow框架其他组件完美配合
+- **类型安全**：完整的类型定义，提供良好的开发体验
+- **全面的错误处理**：详细的错误信息，便于调试和处理异常情况
+
+## 安装
+
+通过Go模块安装：
+
+```bash
+go get github.com/zzliekkas/flow
+```
+
+## 快速开始
+
+### 1. 配置社交登录
+
+```go
+package main
+
+import (
+    "github.com/zzliekkas/flow/auth/drivers"
+)
+
+func main() {
+    // 创建用户存储库
+    userRepo := &MyUserRepository{}
+    
+    // 创建社交登录管理器
+    socialManager := drivers.NewSocialManager(userRepo)
+    
+    // 注册GitHub登录提供商
+    githubProvider := drivers.NewGitHubProvider(drivers.SocialProviderConfig{
+        Provider:     drivers.ProviderGitHub,
+        ClientID:     "your-github-client-id",
+        ClientSecret: "your-github-client-secret",
+        RedirectURL:  "https://your-app.com/auth/github/callback",
+        Scopes:       []string{"user:email"},
+    })
+    
+    socialManager.RegisterProvider(githubProvider)
+    
+    // 设置自定义用户创建回调
+    socialManager.SetCreateUserCallback(func(ctx context.Context, socialUser *drivers.SocialUser) (interface{}, error) {
+        // 自定义用户创建逻辑
+        return createOrFindUser(socialUser), nil
+    })
+    
+    // 继续应用启动流程...
+}
+```
+
+### 2. 注册路由
+
+使用您的Web框架注册登录和回调路由：
+
+```go
+// 使用Gin框架示例
+router := gin.Default()
+
+// GitHub登录路由
+router.GET("/auth/github", func(c *gin.Context) {
+    socialManager.HandleLogin(drivers.ProviderGitHub)(c.Writer, c.Request)
+})
+
+// GitHub回调路由
+router.GET("/auth/github/callback", func(c *gin.Context) {
+    socialManager.HandleCallback(drivers.ProviderGitHub)(c.Writer, c.Request)
+})
+```
+
+### 3. 创建登录页面
+
+在您的前端页面中添加社交登录按钮：
+
+```html
+<a href="/auth/github" class="github-login">
+    <img src="/assets/github-logo.png" alt="GitHub登录">
+    使用GitHub账号登录
+</a>
+
+<a href="/auth/google" class="google-login">
+    <img src="/assets/google-logo.png" alt="Google登录">
+    使用Google账号登录
+</a>
+
+<a href="/auth/wechat" class="wechat-login">
+    <img src="/assets/wechat-logo.png" alt="微信登录">
+    使用微信账号登录
+</a>
+```
+
+## 支持的社交平台
+
+### GitHub登录
+
+1. 在[GitHub开发者设置](https://github.com/settings/developers)创建一个OAuth应用
+2. 设置应用的回调URL为`https://your-app.com/auth/github/callback`
+3. 获取Client ID和Client Secret
+4. 配置GitHub提供商：
+
+```go
+githubProvider := drivers.NewGitHubProvider(drivers.SocialProviderConfig{
+    Provider:     drivers.ProviderGitHub,
+    ClientID:     "your-github-client-id",
+    ClientSecret: "your-github-client-secret",
+    RedirectURL:  "https://your-app.com/auth/github/callback",
+    Scopes:       []string{"user:email"},
+})
+```
+
+### Google登录
+
+1. 在[Google Cloud Console](https://console.cloud.google.com/)创建一个项目
+2. 配置OAuth同意屏幕
+3. 创建OAuth客户端ID，选择Web应用类型
+4. 设置回调URL为`https://your-app.com/auth/google/callback`
+5. 配置Google提供商：
+
+```go
+googleProvider := drivers.NewGoogleProvider(drivers.SocialProviderConfig{
+    Provider:     drivers.ProviderGoogle,
+    ClientID:     "your-google-client-id",
+    ClientSecret: "your-google-client-secret",
+    RedirectURL:  "https://your-app.com/auth/google/callback",
+    Scopes:       []string{"profile", "email"},
+})
+```
+
+### 微信登录
+
+1. 在[微信开放平台](https://open.weixin.qq.com/)注册并创建一个网站应用
+2. 获取AppID和AppSecret
+3. 设置回调域名
+4. 配置微信提供商：
+
+```go
+wechatProvider := drivers.NewWeChatProvider(drivers.SocialProviderConfig{
+    Provider:     drivers.ProviderWeChat,
+    ClientID:     "your-wechat-appid",
+    ClientSecret: "your-wechat-secret",
+    RedirectURL:  "https://your-app.com/auth/wechat/callback",
+    Scopes:       []string{"snsapi_login"},
+})
+```
+
+## 实现自定义社交平台
+
+如果需要支持其他社交平台，只需实现`SocialProvider`接口：
+
+```go
+type MySocialProvider struct {
+    config drivers.SocialProviderConfig
+}
+
+// 实现SocialProvider接口的所有方法
+func (p *MySocialProvider) GetProvider() string {
+    return "my-provider"
+}
+
+func (p *MySocialProvider) GetAuthURL(state string) string {
+    // 实现授权URL生成逻辑
+}
+
+func (p *MySocialProvider) ExchangeToken(ctx context.Context, code string) (string, error) {
+    // 实现令牌交换逻辑
+}
+
+func (p *MySocialProvider) GetUserInfo(ctx context.Context, token string) (*drivers.SocialUser, error) {
+    // 实现用户信息获取逻辑
+}
+
+// 注册自定义提供商
+socialManager.RegisterProvider(&MySocialProvider{
+    config: drivers.SocialProviderConfig{
+        Provider:     "my-provider",
+        ClientID:     "your-client-id",
+        ClientSecret: "your-client-secret",
+        RedirectURL:  "https://your-app.com/auth/my-provider/callback",
+        Scopes:       []string{"required-scopes"},
+    },
+})
+```
+
+## 贡献
+
+欢迎通过Pull Request或Issues贡献代码或提供建议。
+
+## 许可证
+
+本项目采用MIT许可证。请查阅LICENSE文件了解详情。
+
+## 队列系统 (Queue System)
+
+Flow框架提供了功能强大且灵活的任务队列系统，支持异步任务处理、延迟执行、重试机制以及多种队列驱动。
+
+### 核心功能
+
+- **多驱动支持**：内置内存队列和Redis队列驱动，可轻松扩展支持其他后端存储
+- **延迟任务**：支持在指定时间或延迟一段时间后执行任务
+- **任务调度**：可灵活安排任务的执行时间和顺序
+- **重试机制**：任务失败时自动重试，支持配置最大重试次数和重试间隔
+- **并发控制**：可配置工作进程数量，控制任务的并发处理能力
+- **中间件支持**：通过中间件机制扩展任务处理流程，如日志记录、性能监控等
+- **与事件系统集成**：可将事件直接转换为队列任务，实现松耦合的系统架构
+
+### 使用示例
+
+#### 基本用法
+
+```go
+// 创建内存队列
+memQueue := memory.New(3) // 设置最大重试次数为3
+
+// 创建队列管理器
+manager := queue.NewQueueManager()
+
+// 添加队列
+manager.AddQueue("default", memQueue)
+
+// 注册任务处理器
+manager.Register("send_email", func(ctx context.Context, job *queue.Job) error {
+    to, _ := job.Payload["to"].(string)
+    subject, _ := job.Payload["subject"].(string)
+    log.Printf("发送邮件: 收件人=%v, 主题=%v", to, subject)
+    // 执行邮件发送逻辑...
+    return nil
+})
+
+// 推送任务
+payload := map[string]interface{}{
+    "to":      "user@example.com",
+    "subject": "队列示例",
+}
+jobID, err := manager.Push(context.Background(), "send_email", payload)
+
+// 启动工作进程
+queue, _ := manager.GetQueue("default")
+queue.StartWorker(context.Background(), "default", 3) // 启动3个工作进程
+```
+
+#### 使用中间件
+
+```go
+// 使用中间件注册任务处理器
+manager.RegisterWithMiddleware("process_payment",
+    paymentHandler,
+    queue.LoggingMiddleware(),  // 添加日志中间件
+    queue.RetryMiddleware(5),   // 添加重试中间件，最多重试5次
+)
+```
+
+#### 使用Redis队列（分布式处理）
+
+```go
+// 创建Redis队列
+options := redis.DefaultOptions()
+options.Addr = "localhost:6379"
+redisQueue, err := redis.New(options)
+
+// 添加到管理器
+manager.AddQueue("distributed", redisQueue)
+
+// 在不同的进程或服务器上启动工作进程
+redisQueue.StartWorker(context.Background(), "distributed", 5)
+```
+
+#### 与事件系统集成
+
+```go
+// 创建队列事件监听器
+listener := queue.NewQueueEventListener(manager, "default")
+
+// 注册事件到任务的映射
+listener.RegisterEventJob("user.registered", "send_welcome_email")
+
+// 将监听器添加到事件分发器
+dispatcher.AddListener("user.registered", listener)
+```
+
+### 队列驱动
+
+#### 内存队列 (Memory Queue)
+
+适用于单进程应用，所有任务数据保存在内存中，不支持跨进程或跨服务器的任务处理。优点是速度快，无需外部依赖。
+
+#### Redis队列 (Redis Queue)
+
+基于Redis实现的分布式队列，支持跨进程和跨服务器的任务处理。使用Redis的列表、有序集合和哈希表实现队列、调度和任务数据存储，提供可靠的分布式任务处理能力。
+
+### 队列状态管理
+
+任务可以处于以下状态：
+- **pending**: 等待执行
+- **scheduled**: 已计划，等待到达指定时间
+- **running**: 执行中
+- **completed**: 已完成
+- **failed**: 执行失败
+- **retrying**: 等待重试
+- **cancelled**: 已取消
+
+查看任务状态和管理队列：
+
+```go
+// 获取任务信息
+job, err := queue.Get(ctx, "default", jobID)
+fmt.Printf("任务状态: %s\n", job.Status)
+
+// 获取队列大小
+size, err := queue.Size(ctx, "default")
+fmt.Printf("队列大小: %d\n", size)
+
+// 清空队列
+queue.Clear(ctx, "default")
+```
+
+## 开发状态
+
+以下是各个模块的开发状态：
+
+| 模块 | 状态 | 说明 |
+|------|------|------|
+| 基础框架 | ✅ 已完成 | 包含路由、中间件、容器等核心功能 |
+| 配置系统 | ✅ 已完成 | 支持多种配置源，环境变量等 |
+| 日志系统 | ✅ 已完成 | 支持多种日志驱动和日志级别 |
+| 认证系统 | ✅ 已完成 | 包含多种认证驱动和用户权限管理 |
+| 数据库 | ✅ 已完成 | 支持MySQL、PostgreSQL、SQLite等 |
+| 事件系统 | ✅ 已完成 | 支持事件分发和监听 |
+| 任务队列 | ✅ 已完成 | 支持内存队列和Redis队列，延迟任务和重试机制 |
+| 安全系统 | ⚠️ 进行中 | 包含CSRF防护、XSS过滤等安全特性 |
+| 文件系统 | ⚠️ 进行中 | 支持本地和云存储 |
+| 缓存系统 | ⚠️ 进行中 | 支持多种缓存驱动 |
+| 邮件系统 | ⚠️ 进行中 | 支持多种邮件驱动 |
+| 国际化 | 🔄 计划中 | 支持多语言翻译 |
