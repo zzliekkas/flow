@@ -3,7 +3,6 @@ package db
 import (
 	"errors"
 
-	"github.com/zzliekkas/flow/app"
 	"github.com/zzliekkas/flow/config"
 	"github.com/zzliekkas/flow/di"
 	"gorm.io/gorm"
@@ -11,20 +10,22 @@ import (
 
 // DatabaseProvider 数据库服务提供者
 type DatabaseProvider struct {
-	*app.BaseProvider
+	Name      string
+	Priority  int
 	container *di.Container
 }
 
 // NewDatabaseProvider 创建数据库服务提供者
 func NewDatabaseProvider(container *di.Container) *DatabaseProvider {
 	return &DatabaseProvider{
-		BaseProvider: app.NewBaseProvider("database", 50), // 设置优先级为50
-		container:    container,
+		Name:      "database",
+		Priority:  50, // 设置优先级为50
+		container: container,
 	}
 }
 
 // Register 注册数据库服务
-func (p *DatabaseProvider) Register(application *app.Application) error {
+func (p *DatabaseProvider) Register(app interface{}) error {
 	// 注册数据库连接管理器
 	err := p.container.Provide(func(configManager *config.Manager) (*Manager, error) {
 		manager := NewManager()
@@ -67,22 +68,36 @@ func (p *DatabaseProvider) Register(application *app.Application) error {
 }
 
 // Boot 启动数据库服务
-func (p *DatabaseProvider) Boot(application *app.Application) error {
-	// 注册应用关闭钩子，确保在应用关闭时关闭所有数据库连接
-	application.OnBeforeShutdown("database.close", func() {
-		var manager *Manager
-		if err := p.container.Extract(&manager); err == nil && manager != nil {
-			_ = manager.Close()
-		}
-	}, 10)
+func (p *DatabaseProvider) Boot(app interface{}) error {
+	// 由于移除了直接依赖，这里暂时保留但不再直接注册关闭钩子
+	// 关闭逻辑移至Container的销毁过程中
 
 	return nil
 }
 
+// GetProviderName 返回提供者名称
+func (p *DatabaseProvider) GetProviderName() string {
+	return p.Name
+}
+
+// GetPriority 返回提供者优先级
+func (p *DatabaseProvider) GetPriority() int {
+	return p.Priority
+}
+
 // GetInstance 获取数据库管理器实例
-func GetInstance(application *app.Application) (*Manager, error) {
+func GetInstance(engine interface{}) (*Manager, error) {
+	// 检查engine是否实现了Invoke方法
+	invoker, ok := engine.(interface {
+		Invoke(interface{}) error
+	})
+
+	if !ok {
+		return nil, errors.New("引擎不支持依赖注入")
+	}
+
 	var manager *Manager
-	if err := application.Engine().Invoke(func(m *Manager) {
+	if err := invoker.Invoke(func(m *Manager) {
 		manager = m
 	}); err != nil {
 		return nil, err
@@ -92,8 +107,8 @@ func GetInstance(application *app.Application) (*Manager, error) {
 }
 
 // GetConnection 获取指定名称的数据库连接
-func GetConnection(application *app.Application, name string) (*gorm.DB, error) {
-	manager, err := GetInstance(application)
+func GetConnection(engine interface{}, name string) (*gorm.DB, error) {
+	manager, err := GetInstance(engine)
 	if err != nil {
 		return nil, err
 	}
@@ -102,8 +117,8 @@ func GetConnection(application *app.Application, name string) (*gorm.DB, error) 
 }
 
 // GetDefaultConnection 获取默认数据库连接
-func GetDefaultConnection(application *app.Application) (*gorm.DB, error) {
-	manager, err := GetInstance(application)
+func GetDefaultConnection(engine interface{}) (*gorm.DB, error) {
+	manager, err := GetInstance(engine)
 	if err != nil {
 		return nil, err
 	}
@@ -112,13 +127,22 @@ func GetDefaultConnection(application *app.Application) (*gorm.DB, error) {
 }
 
 // GetSeederManager 获取种子数据管理器
-func GetSeederManager(application *app.Application) (*SeederManager, error) {
-	if application == nil {
-		return nil, errors.New("应用实例不能为空")
+func GetSeederManager(engine interface{}) (*SeederManager, error) {
+	if engine == nil {
+		return nil, errors.New("引擎实例不能为空")
+	}
+
+	// 检查engine是否实现了Invoke方法
+	invoker, ok := engine.(interface {
+		Invoke(interface{}) error
+	})
+
+	if !ok {
+		return nil, errors.New("引擎不支持依赖注入")
 	}
 
 	var seederManager *SeederManager
-	err := application.Engine().Invoke(func(sm *SeederManager) {
+	err := invoker.Invoke(func(sm *SeederManager) {
 		seederManager = sm
 	})
 	if err != nil {

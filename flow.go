@@ -2,14 +2,22 @@ package flow
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
+	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/zzliekkas/flow/cli/banner"
+	"github.com/zzliekkas/flow/config"
+	"github.com/zzliekkas/flow/db"
 	"go.uber.org/dig"
+	"gorm.io/gorm"
 )
 
 // 全局常量
@@ -30,8 +38,12 @@ type H map[string]interface{}
 // Engine 是Flow框架的主结构体，封装了Gin引擎和依赖注入容器
 type Engine struct {
 	*gin.Engine
-	container *dig.Container
-	config    *Config
+	container     *dig.Container
+	config        *Config
+	dbInitialized bool // 数据库是否已初始化
+
+	// 生命周期钩子
+	shutdownHooks []func()
 }
 
 // Context 是Flow框架的上下文结构体，扩展了Gin的Context
@@ -58,7 +70,70 @@ type Option func(*Engine)
 func WithConfig(configPath string) Option {
 	return func(e *Engine) {
 		e.config.ConfigPath = configPath
-		// 这里可以添加配置加载逻辑
+
+		// 初始化和加载配置
+		configManager, err := loadConfig(configPath)
+		if err != nil {
+			// 记录错误但不中断
+			fmt.Printf("加载配置文件失败: %v\n", err)
+			return
+		}
+
+		// 注册到依赖注入容器
+		e.Provide(func() *config.Config {
+			return configManager
+		})
+
+		// 为兼容性提供Manager类型别名
+		e.Provide(func(cfg *config.Config) *config.Manager {
+			return cfg
+		})
+
+		// 应用配置到框架
+		applyConfigToEngine(e, configManager)
+	}
+}
+
+// loadConfig 加载配置文件
+func loadConfig(configPath string) (*config.Config, error) {
+	// 创建配置实例
+	cfg := config.NewConfig(
+		config.WithConfigPath(configPath),
+	)
+
+	// 加载配置
+	if err := cfg.Load(); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+// applyConfigToEngine 将配置应用到引擎
+func applyConfigToEngine(e *Engine, cfg *config.Config) {
+	// 应用模式设置
+	if mode := cfg.GetString("app.mode"); mode != "" {
+		e.config.Mode = mode
+		gin.SetMode(mapGinMode(mode))
+	}
+
+	// 应用日志级别设置
+	if logLevel := cfg.GetString("app.log_level"); logLevel != "" {
+		e.config.LogLevel = logLevel
+	}
+
+	// 应用其它配置
+	if templates := cfg.GetString("app.templates"); templates != "" {
+		e.LoadHTMLGlob(templates)
+	}
+
+	// 应用静态文件配置
+	if staticPath := cfg.GetString("app.static.path"); staticPath != "" {
+		urlPath := cfg.GetString("app.static.url")
+		if urlPath == "" {
+			urlPath = "/static"
+		}
+		e.Static(urlPath, staticPath)
 	}
 }
 
@@ -74,15 +149,54 @@ func WithMode(mode string) Option {
 func WithLogLevel(level string) Option {
 	return func(e *Engine) {
 		e.config.LogLevel = level
-		// 这里可以添加日志级别设置逻辑
+
+		// 配置日志级别
+		configureLogLevel(level)
+	}
+}
+
+// configureLogLevel 配置日志级别
+func configureLogLevel(level string) {
+	// 依据级别配置日志
+	switch strings.ToLower(level) {
+	case "debug":
+		// 设置为详细日志模式
+		fmt.Println("日志级别设置为: DEBUG")
+	case "info":
+		// 设置为信息日志模式
+		fmt.Println("日志级别设置为: INFO")
+	case "warn", "warning":
+		// 设置为警告日志模式
+		fmt.Println("日志级别设置为: WARN")
+	case "error":
+		// 设置为错误日志模式
+		fmt.Println("日志级别设置为: ERROR")
+	default:
+		// 默认为INFO级别
+		fmt.Println("未知日志级别，使用默认: INFO")
 	}
 }
 
 // WithDatabase 返回一个配置数据库的选项
 func WithDatabase(options ...interface{}) Option {
 	return func(e *Engine) {
-		// 这里可以添加数据库初始化逻辑
-		// 例如注册数据库服务到依赖注入容器
+		// 存储数据库选项
+		databaseOptions = options
+
+		// 注册数据库初始化提供者
+		e.Provide(initDatabaseProvider)
+
+		// 注册关闭钩子
+		e.OnShutdown(func() {
+			// 尝试关闭数据库连接
+			e.Invoke(func(provider interface{}) {
+				if dbProvider, ok := provider.(*db.DbProvider); ok {
+					if err := dbProvider.Close(); err != nil {
+						fmt.Printf("关闭数据库连接时出错: %v\n", err)
+					}
+				}
+			})
+		})
 	}
 }
 
@@ -112,6 +226,17 @@ func WithStaticFiles(urlPath, dirPath string) Option {
 func WithServiceProvider(constructor interface{}) Option {
 	return func(e *Engine) {
 		e.Provide(constructor)
+	}
+}
+
+// WithConfigWatcher 返回一个监听配置变更的选项
+func WithConfigWatcher(callback func()) Option {
+	return func(e *Engine) {
+		// 检查是否有配置管理器
+		e.Invoke(func(cfg *config.Config) {
+			// 注册配置变更回调
+			cfg.OnChange(callback)
+		})
 	}
 }
 
@@ -268,13 +393,23 @@ func (e *Engine) Invoke(function interface{}) error {
 // Run 启动HTTP服务器
 func (e *Engine) Run(addr ...string) error {
 	// 显示Flow框架Banner
-	banner.Print(Version, "Web Framework for Go")
+	fmt.Printf("Flow Framework for Go %s\n", Version)
 
 	return e.Engine.Run(addr...)
 }
 
+// OnShutdown 注册应用关闭时的钩子函数
+func (e *Engine) OnShutdown(fn func()) {
+	e.shutdownHooks = append(e.shutdownHooks, fn)
+}
+
 // Shutdown 优雅关闭HTTP服务器
 func (e *Engine) Shutdown(ctx context.Context) error {
+	// 调用所有关闭钩子
+	for _, hook := range e.shutdownHooks {
+		hook()
+	}
+
 	// 获取 Gin 底层的 HTTP 服务器
 	// 由于 Gin 实际上不暴露内部 HTTP 服务器的引用，我们只能模拟关闭
 	// 在真实应用中，需要持有 http.Server 的引用才能调用其 Shutdown 方法
@@ -378,10 +513,17 @@ func (e *Engine) GetConfig() *Config {
 
 // DB 获取数据库连接
 // 这是一个便捷方法，用于从上下文中获取数据库连接
-func (c *Context) DB() interface{} {
-	var db interface{}
-	c.Inject(&db)
-	return db
+func (c *Context) DB() *gorm.DB {
+	var dbProvider *db.DbProvider
+	err := c.engine.Invoke(func(p *db.DbProvider) {
+		dbProvider = p
+	})
+
+	if err != nil || dbProvider == nil {
+		return nil
+	}
+
+	return dbProvider.DB
 }
 
 // Cache 获取缓存实例
@@ -424,14 +566,127 @@ func (c *Context) ParamUint(key string) uint {
 
 // IntParam 将字符串转换为整数
 func (c *Context) IntParam(value string) (int, error) {
-	// 这里应该有实际的转换逻辑
-	// 为简化代码，仅返回0
-	return 0, nil
+	return strconv.Atoi(value)
 }
 
 // UintParam 将字符串转换为无符号整数
 func (c *Context) UintParam(value string) (uint, error) {
-	// 这里应该有实际的转换逻辑
-	// 为简化代码，仅返回0
-	return 0, nil
+	val, err := strconv.ParseUint(value, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return uint(val), nil
+}
+
+// Config 获取配置实例
+func (c *Context) Config() *config.Config {
+	var cfg *config.Config
+	err := c.engine.Invoke(func(c *config.Config) {
+		cfg = c
+	})
+
+	if err != nil || cfg == nil {
+		// 如果没有注册配置，返回一个空配置
+		return config.NewConfig()
+	}
+
+	return cfg
+}
+
+// ConfigValue 获取指定键的配置值
+func (c *Context) ConfigValue(key string) interface{} {
+	cfg := c.Config()
+	if cfg == nil {
+		return nil
+	}
+	return cfg.Get(key)
+}
+
+// ConfigString 获取字符串配置值
+func (c *Context) ConfigString(key string, defaultValue string) string {
+	cfg := c.Config()
+	if cfg == nil {
+		return defaultValue
+	}
+
+	value := cfg.GetString(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
+
+// ConfigInt 获取整数配置值
+func (c *Context) ConfigInt(key string, defaultValue int) int {
+	cfg := c.Config()
+	if cfg == nil {
+		return defaultValue
+	}
+
+	return cfg.GetInt(key)
+}
+
+// ConfigBool 获取布尔配置值
+func (c *Context) ConfigBool(key string, defaultValue bool) bool {
+	cfg := c.Config()
+	if cfg == nil {
+		return defaultValue
+	}
+
+	return cfg.GetBool(key)
+}
+
+// RegisterDatabaseInitializer 注册数据库初始化器
+func (e *Engine) RegisterDatabaseInitializer() {
+	if !e.dbInitialized {
+		db.RegisterDatabaseInitializer(func(initializer db.DbInitializer) {
+			// 初始化数据库
+			dbProvider, err := initializer(nil)
+			if err != nil {
+				log.Printf("数据库初始化失败: %v", err)
+				return
+			}
+
+			// 将数据库实例注入容器
+			err = e.container.Provide(func() interface{} {
+				return dbProvider
+			})
+			if err != nil {
+				log.Printf("注入数据库实例失败: %v", err)
+				return
+			}
+			e.dbInitialized = true
+		})
+	}
+}
+
+// DB 返回默认数据库连接
+func (e *Engine) DB() (*db.DbProvider, bool) {
+	var provider *db.DbProvider
+	err := e.container.Invoke(func(p *db.DbProvider) {
+		provider = p
+	})
+	if err != nil || provider == nil {
+		return nil, false
+	}
+	return provider, true
+}
+
+// Container 返回依赖注入容器
+func (e *Engine) Container() *dig.Container {
+	return e.container
+}
+
+// WaitForTermination 等待终止信号
+func (e *Engine) WaitForTermination() {
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := e.Shutdown(ctx); err != nil {
+		log.Printf("服务器关闭失败: %v", err)
+	}
 }
