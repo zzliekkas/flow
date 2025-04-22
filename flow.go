@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -76,7 +77,12 @@ func WithConfig(configPath string) Option {
 		if err != nil {
 			// 记录错误但不中断
 			fmt.Printf("加载配置文件失败: %v\n", err)
-			return
+			// 创建一个空的配置管理器继续使用
+			configManager = config.NewConfig()
+			configManager.Set("app.name", "flow")
+			configManager.Set("app.version", Version)
+			configManager.Set("app.mode", e.config.Mode)
+			configManager.Set("app.log_level", e.config.LogLevel)
 		}
 
 		// 注册到依赖注入容器
@@ -96,14 +102,44 @@ func WithConfig(configPath string) Option {
 
 // loadConfig 加载配置文件
 func loadConfig(configPath string) (*config.Config, error) {
+	// 判断是文件路径还是目录
+	fi, err := os.Stat(configPath)
+
+	var dirPath, configName string
+	if err == nil && fi.IsDir() {
+		// 如果是目录，使用目录和默认文件名"app"
+		dirPath = configPath
+		configName = "app"
+		fmt.Printf("配置目录: %s, 配置文件: %s\n", dirPath, configName)
+	} else {
+		// 如果是文件路径或不存在，拆分为目录和文件名
+		dirPath = filepath.Dir(configPath)
+		baseName := filepath.Base(configPath)
+		configName = strings.TrimSuffix(baseName, filepath.Ext(baseName))
+		fmt.Printf("配置目录: %s, 配置文件: %s\n", dirPath, configName)
+	}
+
 	// 创建配置实例
 	cfg := config.NewConfig(
-		config.WithConfigPath(configPath),
+		config.WithConfigPath(dirPath),
+		config.WithConfigName(configName),
 	)
 
-	// 加载配置
-	if err := cfg.Load(); err != nil {
-		return nil, err
+	// 尝试加载配置
+	err = cfg.Load()
+	if err != nil {
+		// 如果加载失败，记录警告但继续使用空配置
+		fmt.Printf("警告: 加载配置文件失败: %v\n", err)
+		fmt.Println("将使用默认配置继续运行")
+
+		// 初始化一些基本配置值
+		cfg.Set("app.name", "flow")
+		cfg.Set("app.version", Version)
+		cfg.Set("app.mode", "debug")
+		cfg.Set("app.log_level", "info")
+
+		// 不返回错误，让应用继续运行
+		return cfg, nil
 	}
 
 	return cfg, nil
@@ -111,6 +147,12 @@ func loadConfig(configPath string) (*config.Config, error) {
 
 // applyConfigToEngine 将配置应用到引擎
 func applyConfigToEngine(e *Engine, cfg *config.Config) {
+	if cfg == nil {
+		// 如果配置为nil，不做任何操作
+		fmt.Println("警告: 配置为空，跳过应用配置到引擎")
+		return
+	}
+
 	// 应用模式设置
 	if mode := cfg.GetString("app.mode"); mode != "" {
 		e.config.Mode = mode
@@ -180,8 +222,15 @@ func configureLogLevel(level string) {
 // WithDatabase 返回一个配置数据库的选项
 func WithDatabase(options ...interface{}) Option {
 	return func(e *Engine) {
-		// 存储数据库选项
-		databaseOptions = options
+		// 线程安全地存储数据库选项
+		dbOptionsMutex.Lock()
+		if len(options) > 0 {
+			databaseOptions = make([]interface{}, len(options))
+			copy(options, databaseOptions)
+		}
+		// 确保db包能获取选项
+		db.SetDatabaseOptions(databaseOptions)
+		dbOptionsMutex.Unlock()
 
 		// 注册数据库初始化提供者
 		e.Provide(initDatabaseProvider)
@@ -193,6 +242,8 @@ func WithDatabase(options ...interface{}) Option {
 				if dbProvider, ok := provider.(*db.DbProvider); ok {
 					if err := dbProvider.Close(); err != nil {
 						fmt.Printf("关闭数据库连接时出错: %v\n", err)
+					} else {
+						log.Println("数据库连接已安全关闭")
 					}
 				}
 			})
@@ -586,8 +637,13 @@ func (c *Context) Config() *config.Config {
 	})
 
 	if err != nil || cfg == nil {
-		// 如果没有注册配置，返回一个空配置
-		return config.NewConfig()
+		// 如果没有注册配置，返回一个具备安全默认值的空配置
+		cfg = config.NewConfig()
+		// 手动初始化 viper，确保不会发生空指针异常
+		cfg.Set("app.name", "flow")
+		cfg.Set("app.version", Version)
+		cfg.Set("app.mode", c.engine.config.Mode)
+		cfg.Set("app.log_level", c.engine.config.LogLevel)
 	}
 
 	return cfg

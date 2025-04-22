@@ -3,6 +3,7 @@ package flow
 import (
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/zzliekkas/flow/db"
 )
@@ -13,8 +14,11 @@ func init() {
 	db.SetRegisterFunction(registerDatabaseInitializer)
 }
 
-// 数据库选项存储
-var databaseOptions []interface{}
+// 数据库选项存储 - 使用互斥锁保护
+var (
+	databaseOptions []interface{}
+	dbOptionsMutex  sync.Mutex
+)
 
 // 数据库初始化器，由db包设置
 var databaseInitializer db.DbInitializer
@@ -31,12 +35,22 @@ func initDatabaseProvider() (interface{}, error) {
 		return nil, fmt.Errorf("数据库初始化器未注册")
 	}
 
+	// 线程安全地获取选项
+	dbOptionsMutex.Lock()
+	options := make([]interface{}, len(databaseOptions))
+	copy(options, databaseOptions)
+	dbOptionsMutex.Unlock()
+
 	// 调用db包中的初始化器函数
-	return databaseInitializer(databaseOptions)
+	provider, err := databaseInitializer(options)
+	if err != nil {
+		return nil, fmt.Errorf("数据库初始化失败: %w", err)
+	}
+
+	return provider, nil
 }
 
-// 现在，我们将删除重复声明的方法，并从flow.go文件更新它们的实现
-// 在flow.go中更新以下方法的实现：
-// 1. Context.DB() - 使用db.DbProvider类型
-// 2. Context.IntParam() - 使用strconv.Atoi
-// 3. Context.UintParam() - 使用strconv.ParseUint
+// 注意: WithDatabase函数实现已移至flow.go
+// 请参阅flow.go中的实现
+
+// 其他数据库相关功能可以在此添加

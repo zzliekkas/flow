@@ -94,15 +94,34 @@ func WithEnvironment(env string) ConfigOption {
 	}
 }
 
-// Load 加载配置
+// Load 加载配置文件
 func (c *Config) Load() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	// 设置配置文件路径
-	c.viper.AddConfigPath(c.configPath)
-	c.viper.SetConfigName(c.configName)
-	c.viper.SetConfigType(c.configType)
+	if c.configPath != "" {
+		c.viper.AddConfigPath(c.configPath)
+		fmt.Printf("添加配置路径: %s\n", c.configPath)
+	} else {
+		c.viper.AddConfigPath("./config") // 默认配置目录
+		c.viper.AddConfigPath(".")        // 当前目录
+	}
+
+	// 设置配置文件名称
+	if c.configName != "" {
+		c.viper.SetConfigName(c.configName)
+		fmt.Printf("设置配置文件名: %s\n", c.configName)
+	} else {
+		c.viper.SetConfigName("app") // 默认配置文件名
+	}
+
+	// 设置配置文件类型
+	if c.configType != "" {
+		c.viper.SetConfigType(c.configType)
+	} else {
+		c.viper.SetConfigType("yaml") // 默认使用YAML
+	}
 
 	// 加载环境变量
 	c.viper.AutomaticEnv()
@@ -110,18 +129,62 @@ func (c *Config) Load() error {
 	c.viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	// 尝试加载特定环境的配置文件
-	envConfigName := fmt.Sprintf("%s.%s", c.configName, c.env)
-	envConfigPath := filepath.Join(c.configPath, fmt.Sprintf("%s.%s", envConfigName, c.configType))
-	if _, err := os.Stat(envConfigPath); err == nil {
-		c.viper.SetConfigName(envConfigName)
+	if c.env != "" {
+		envConfigName := fmt.Sprintf("%s.%s", c.configName, c.env)
+		envConfigPath := filepath.Join(c.configPath, fmt.Sprintf("%s.%s", envConfigName, c.configType))
+		if _, err := os.Stat(envConfigPath); err == nil {
+			fmt.Printf("加载环境特定配置: %s\n", envConfigPath)
+			c.viper.SetConfigName(envConfigName)
+		}
 	}
 
-	// 读取配置文件
+	// 加载配置
 	if err := c.viper.ReadInConfig(); err != nil {
-		return fmt.Errorf("无法读取配置文件: %w", err)
+		// 文件不存在，创建默认配置
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			fmt.Printf("配置文件未找到: %v\n", err)
+
+			// 尝试创建配置目录和文件
+			if c.configPath != "" {
+				if err := os.MkdirAll(c.configPath, 0755); err == nil {
+					defaultConfig := `app:
+  name: "flow"
+  version: "1.0.0"
+  mode: "debug"
+  log_level: "info"`
+
+					configType := c.configType
+					if configType == "" {
+						configType = "yaml"
+					}
+
+					filepath := fmt.Sprintf("%s/%s.%s", c.configPath, c.configName, configType)
+					if err := os.WriteFile(filepath, []byte(defaultConfig), 0644); err == nil {
+						fmt.Printf("已创建默认配置文件: %s\n", filepath)
+						// 重新加载
+						if err := c.viper.ReadInConfig(); err == nil {
+							c.loaded = true
+							// 设置文件变更监听
+							c.setupConfigWatch()
+							return nil
+						}
+					}
+				}
+			}
+		}
+		return err
 	}
+
+	c.loaded = true
 
 	// 设置文件变更监听
+	c.setupConfigWatch()
+
+	return nil
+}
+
+// setupConfigWatch 设置配置文件变更监听
+func (c *Config) setupConfigWatch() {
 	c.viper.WatchConfig()
 	c.viper.OnConfigChange(func(e fsnotify.Event) {
 		c.mu.Lock()
@@ -130,9 +193,6 @@ func (c *Config) Load() error {
 		}
 		c.mu.Unlock()
 	})
-
-	c.loaded = true
-	return nil
 }
 
 // OnChange 设置配置变更回调
@@ -144,76 +204,121 @@ func (c *Config) OnChange(callback func()) {
 
 // Get 获取指定键的配置值
 func (c *Config) Get(key string) interface{} {
+	if c.viper == nil {
+		return nil
+	}
 	return c.viper.Get(key)
 }
 
 // GetString 获取字符串配置值
 func (c *Config) GetString(key string) string {
+	if c.viper == nil {
+		return ""
+	}
 	return c.viper.GetString(key)
 }
 
 // GetInt 获取整数配置值
 func (c *Config) GetInt(key string) int {
+	if c.viper == nil {
+		return 0
+	}
 	return c.viper.GetInt(key)
 }
 
 // GetBool 获取布尔配置值
 func (c *Config) GetBool(key string) bool {
+	if c.viper == nil {
+		return false
+	}
 	return c.viper.GetBool(key)
 }
 
 // GetFloat64 获取浮点数配置值
 func (c *Config) GetFloat64(key string) float64 {
+	if c.viper == nil {
+		return 0
+	}
 	return c.viper.GetFloat64(key)
 }
 
 // GetTime 获取时间配置值
 func (c *Config) GetTime(key string) time.Time {
+	if c.viper == nil {
+		return time.Time{}
+	}
 	return c.viper.GetTime(key)
 }
 
 // GetDuration 获取时间间隔配置值
 func (c *Config) GetDuration(key string) time.Duration {
+	if c.viper == nil {
+		return 0
+	}
 	return c.viper.GetDuration(key)
 }
 
 // GetStringSlice 获取字符串切片配置值
 func (c *Config) GetStringSlice(key string) []string {
+	if c.viper == nil {
+		return []string{}
+	}
 	return c.viper.GetStringSlice(key)
 }
 
 // GetStringMap 获取字符串映射配置值
 func (c *Config) GetStringMap(key string) map[string]interface{} {
+	if c.viper == nil {
+		return map[string]interface{}{}
+	}
 	return c.viper.GetStringMap(key)
 }
 
 // GetStringMapString 获取字符串映射字符串配置值
 func (c *Config) GetStringMapString(key string) map[string]string {
+	if c.viper == nil {
+		return map[string]string{}
+	}
 	return c.viper.GetStringMapString(key)
 }
 
 // Unmarshal 将配置解析到结构体
 func (c *Config) Unmarshal(key string, rawVal interface{}) error {
+	if c.viper == nil {
+		return fmt.Errorf("配置未初始化")
+	}
 	return c.viper.UnmarshalKey(key, rawVal)
 }
 
 // UnmarshalWithOptions 将配置解析到结构体，支持额外选项
 func (c *Config) UnmarshalWithOptions(key string, rawVal interface{}, opts ...viper.DecoderConfigOption) error {
+	if c.viper == nil {
+		return fmt.Errorf("配置未初始化")
+	}
 	return c.viper.UnmarshalKey(key, rawVal, opts...)
 }
 
 // Set 设置配置值
 func (c *Config) Set(key string, value interface{}) {
+	if c.viper == nil {
+		c.viper = viper.New()
+	}
 	c.viper.Set(key, value)
 }
 
 // Has 检查是否存在指定键
 func (c *Config) Has(key string) bool {
+	if c.viper == nil {
+		return false
+	}
 	return c.viper.IsSet(key)
 }
 
 // AllSettings 获取所有配置
 func (c *Config) AllSettings() map[string]interface{} {
+	if c.viper == nil {
+		return map[string]interface{}{}
+	}
 	return c.viper.AllSettings()
 }
 
@@ -354,11 +459,25 @@ func AllSettings() map[string]interface{} {
 // ensureLoaded 确保全局配置已加载
 func ensureLoaded() {
 	if defaultConfig == nil {
-		panic("配置未初始化，请先调用Load()")
+		// 如果全局配置为nil，创建一个默认配置而不是抛出panic
+		defaultConfig = NewConfig()
+		// 设置一些默认值
+		defaultConfig.Set("app.name", "flow")
+		defaultConfig.Set("app.version", "1.0.0")
+		defaultConfig.Set("app.mode", "debug")
+		fmt.Println("警告: 配置未初始化，已创建默认配置")
+		return
 	}
+
 	if !defaultConfig.IsLoaded() {
-		if err := defaultConfig.Load(); err != nil {
-			panic(fmt.Sprintf("加载配置失败: %v", err))
+		// 尝试加载配置，但不因加载失败而panic
+		err := defaultConfig.Load()
+		if err != nil {
+			fmt.Printf("警告: 加载配置失败: %v，将使用默认值\n", err)
+			// 确保viper实例已初始化
+			if defaultConfig.viper == nil {
+				defaultConfig.viper = viper.New()
+			}
 		}
 	}
 }
