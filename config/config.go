@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -102,7 +103,9 @@ func (c *Config) Load() error {
 	// 设置配置文件路径
 	if c.configPath != "" {
 		c.viper.AddConfigPath(c.configPath)
-		fmt.Printf("添加配置路径: %s\n", c.configPath)
+		if os.Getenv("FLOW_DEBUG") == "true" {
+			fmt.Printf("添加配置路径: %s\n", c.configPath)
+		}
 	} else {
 		c.viper.AddConfigPath("./config") // 默认配置目录
 		c.viper.AddConfigPath(".")        // 当前目录
@@ -111,7 +114,9 @@ func (c *Config) Load() error {
 	// 设置配置文件名称
 	if c.configName != "" {
 		c.viper.SetConfigName(c.configName)
-		fmt.Printf("设置配置文件名: %s\n", c.configName)
+		if os.Getenv("FLOW_DEBUG") == "true" {
+			fmt.Printf("设置配置文件名: %s\n", c.configName)
+		}
 	} else {
 		c.viper.SetConfigName("app") // 默认配置文件名
 	}
@@ -128,12 +133,24 @@ func (c *Config) Load() error {
 	c.viper.SetEnvPrefix("FLOW") // 环境变量前缀，如FLOW_APP_NAME
 	c.viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
+	// 检查配置文件是否存在并尝试修复
+	configType := c.configType
+	if configType == "" {
+		configType = "yaml"
+	}
+	configFilePath := filepath.Join(c.configPath, fmt.Sprintf("%s.%s", c.configName, configType))
+	if err := c.checkAndFixConfigFile(configFilePath); err != nil && os.Getenv("FLOW_DEBUG") == "true" {
+		fmt.Printf("检查配置文件失败: %v\n", err)
+	}
+
 	// 尝试加载特定环境的配置文件
 	if c.env != "" {
 		envConfigName := fmt.Sprintf("%s.%s", c.configName, c.env)
 		envConfigPath := filepath.Join(c.configPath, fmt.Sprintf("%s.%s", envConfigName, c.configType))
 		if _, err := os.Stat(envConfigPath); err == nil {
-			fmt.Printf("加载环境特定配置: %s\n", envConfigPath)
+			if os.Getenv("FLOW_DEBUG") == "true" {
+				fmt.Printf("加载环境特定配置: %s\n", envConfigPath)
+			}
 			c.viper.SetConfigName(envConfigName)
 		}
 	}
@@ -142,25 +159,24 @@ func (c *Config) Load() error {
 	if err := c.viper.ReadInConfig(); err != nil {
 		// 文件不存在，创建默认配置
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			fmt.Printf("配置文件未找到: %v\n", err)
+			if os.Getenv("FLOW_DEBUG") == "true" {
+				fmt.Printf("配置文件未找到: %v\n", err)
+			}
 
 			// 尝试创建配置目录和文件
 			if c.configPath != "" {
 				if err := os.MkdirAll(c.configPath, 0755); err == nil {
-					defaultConfig := `app:
+					defaultConfig := `# Flow应用配置
+app:
   name: "flow"
   version: "1.0.0"
   mode: "debug"
   log_level: "info"`
 
-					configType := c.configType
-					if configType == "" {
-						configType = "yaml"
-					}
-
-					filepath := fmt.Sprintf("%s/%s.%s", c.configPath, c.configName, configType)
-					if err := os.WriteFile(filepath, []byte(defaultConfig), 0644); err == nil {
-						fmt.Printf("已创建默认配置文件: %s\n", filepath)
+					if err := os.WriteFile(configFilePath, []byte(defaultConfig), 0644); err == nil {
+						if os.Getenv("FLOW_DEBUG") == "true" {
+							fmt.Printf("已创建默认配置文件: %s\n", configFilePath)
+						}
 						// 重新加载
 						if err := c.viper.ReadInConfig(); err == nil {
 							c.loaded = true
@@ -169,6 +185,19 @@ func (c *Config) Load() error {
 							return nil
 						}
 					}
+				}
+			}
+		} else {
+			// 解析错误，尝试修复
+			if os.Getenv("FLOW_DEBUG") == "true" {
+				fmt.Printf("配置文件解析错误: %v，尝试修复\n", err)
+			}
+			if err := c.fixConfigFile(configFilePath); err == nil {
+				// 修复成功，重新加载
+				if err := c.viper.ReadInConfig(); err == nil {
+					c.loaded = true
+					c.setupConfigWatch()
+					return nil
 				}
 			}
 		}
@@ -181,6 +210,95 @@ func (c *Config) Load() error {
 	c.setupConfigWatch()
 
 	return nil
+}
+
+// checkAndFixConfigFile 检查并修复配置文件
+func (c *Config) checkAndFixConfigFile(filePath string) error {
+	// 检查文件是否存在
+	info, err := os.Stat(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // 文件不存在，不需要修复
+		}
+		return err
+	}
+
+	// 空文件需要删除并重新创建
+	if info.Size() == 0 {
+		if err := os.Remove(filePath); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	// 读取文件内容
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+
+	// 检查文件内容，看是否有BOM标记
+	if len(content) >= 3 && content[0] == 0xEF && content[1] == 0xBB && content[2] == 0xBF {
+		// 移除BOM标记
+		content = content[3:]
+		if err := os.WriteFile(filePath, content, info.Mode()); err != nil {
+			return err
+		}
+		if os.Getenv("FLOW_DEBUG") == "true" {
+			fmt.Println("已移除配置文件的BOM标记")
+		}
+	}
+
+	return nil
+}
+
+// fixConfigFile 修复配置文件
+func (c *Config) fixConfigFile(filePath string) error {
+	// 检查文件是否存在
+	if _, err := os.Stat(filePath); err != nil {
+		return err
+	}
+
+	// 创建备份
+	backupFile := filePath + ".bak"
+	if err := copyFile(filePath, backupFile); err != nil {
+		return err
+	}
+
+	// 创建新的配置文件
+	defaultConfig := `# Flow应用配置
+app:
+  name: "flow"
+  version: "1.0.0"
+  mode: "debug"
+  log_level: "info"`
+
+	if err := os.WriteFile(filePath, []byte(defaultConfig), 0644); err != nil {
+		return err
+	}
+
+	if os.Getenv("FLOW_DEBUG") == "true" {
+		fmt.Printf("已修复配置文件: %s，备份保存在: %s\n", filePath, backupFile)
+	}
+	return nil
+}
+
+// copyFile 复制文件
+func copyFile(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	return err
 }
 
 // setupConfigWatch 设置配置文件变更监听

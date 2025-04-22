@@ -7,7 +7,16 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/zzliekkas/flow/cli/banner"
+)
+
+// 定义Banner常量
+const (
+	SmallBanner = `
+    ┌─┐┬  ┌─┐┬ ┬
+    ├┤ │  │ ││││
+    └  ┴─┘└─┘└┴┘
+    %s - %s
+`
 )
 
 // App 表示CLI应用程序
@@ -60,12 +69,14 @@ func (a *App) AddCommand(cmd *cobra.Command) {
 func (a *App) Run() error {
 	// 检查环境变量中的banner大小设置
 	bannerSize := os.Getenv("FLOW_BANNER_SIZE")
-	if bannerSize == "" {
-		// 默认使用small大小
-		banner.Print(a.Version, a.Description)
+	if bannerSize == "" || bannerSize == "small" {
+		// 使用小型Banner
+		fmt.Printf(SmallBanner, a.Version, a.Description)
 	} else {
-		// 用户指定了大小
-		banner.PrintWithSize(a.Version, a.Description, bannerSize)
+		// 如果用户要求不显示banner
+		if bannerSize != "none" {
+			fmt.Printf(SmallBanner, a.Version, a.Description)
+		}
 	}
 
 	// 获取可执行文件名称
@@ -81,7 +92,7 @@ func (a *App) Run() error {
 
 // NewFlowCLI 创建默认的Flow CLI应用程序
 func NewFlowCLI() *App {
-	return NewApp("flow", "1.0.0", "Flow框架命令行工具")
+	return NewApp("flow", "1.0.5", "Flow框架命令行工具")
 }
 
 // PrintError 打印错误信息并退出

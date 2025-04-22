@@ -24,7 +24,16 @@ import (
 // 全局常量
 const (
 	// 版本信息
-	Version = "1.0.4"
+	Version = "1.0.5"
+
+	FlowBanner = `
+[%s] [INFO] 
+
+    ┌─┐┬  ┌─┐┬ ┬
+    ├┤ │  │ ││││
+    └  ┴─┘└─┘└┴┘
+
+`
 )
 
 // 添加单例变量
@@ -110,13 +119,11 @@ func loadConfig(configPath string) (*config.Config, error) {
 		// 如果是目录，使用目录和默认文件名"app"
 		dirPath = configPath
 		configName = "app"
-		fmt.Printf("配置目录: %s, 配置文件: %s\n", dirPath, configName)
 	} else {
 		// 如果是文件路径或不存在，拆分为目录和文件名
 		dirPath = filepath.Dir(configPath)
 		baseName := filepath.Base(configPath)
 		configName = strings.TrimSuffix(baseName, filepath.Ext(baseName))
-		fmt.Printf("配置目录: %s, 配置文件: %s\n", dirPath, configName)
 	}
 
 	// 创建配置实例
@@ -128,9 +135,11 @@ func loadConfig(configPath string) (*config.Config, error) {
 	// 尝试加载配置
 	err = cfg.Load()
 	if err != nil {
-		// 如果加载失败，记录警告但继续使用空配置
-		fmt.Printf("警告: 加载配置文件失败: %v\n", err)
-		fmt.Println("将使用默认配置继续运行")
+		// 如果加载失败，使用空配置
+		if e := os.Getenv("FLOW_DEBUG"); e == "true" {
+			fmt.Printf("警告: 加载配置文件失败: %v\n", err)
+			fmt.Println("将使用默认配置继续运行")
+		}
 
 		// 初始化一些基本配置值
 		cfg.Set("app.name", "flow")
@@ -444,7 +453,9 @@ func (e *Engine) Invoke(function interface{}) error {
 // Run 启动HTTP服务器
 func (e *Engine) Run(addr ...string) error {
 	// 显示Flow框架Banner
-	fmt.Printf("Flow Framework for Go %s\n", Version)
+	if os.Getenv("FLOW_HIDE_BANNER") != "true" {
+		fmt.Printf(FlowBanner, Version)
+	}
 
 	return e.Engine.Run(addr...)
 }
