@@ -23,7 +23,7 @@ import (
 // 全局常量
 const (
 	// 版本信息
-	Version = "1.0.1"
+	Version = "1.0.4"
 )
 
 // 添加单例变量
