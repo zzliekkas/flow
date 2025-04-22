@@ -1,153 +1,364 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
-	"github.com/joho/godotenv"
+	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
 )
 
-// Manager 是配置管理器结构体
-type Manager struct {
-	v          *viper.Viper
+var (
+	// 全局配置实例
+	defaultConfig *Config
+	once          sync.Once
+)
+
+// Config 表示配置管理器
+type Config struct {
+	// viper实例
+	viper *viper.Viper
+
+	// 配置文件路径
 	configPath string
-	env        string
+
+	// 配置文件名
+	configName string
+
+	// 配置文件类型
+	configType string
+
+	// 环境
+	env string
+
+	// 是否已加载
+	loaded bool
+
+	// 锁
+	mu sync.RWMutex
+
+	// 配置更改回调
+	onChangeCallbacks []func()
 }
 
-// NewManager 创建一个新的配置管理器
-func NewManager(configPath string) *Manager {
-	v := viper.New()
-	env := os.Getenv("FLOW_ENV")
-	if env == "" {
-		env = "development"
+// 配置选项函数
+type ConfigOption func(*Config)
+
+// NewConfig 创建一个新的配置管理器
+func NewConfig(options ...ConfigOption) *Config {
+	cfg := &Config{
+		viper:      viper.New(),
+		configPath: "./config",
+		configName: "config",
+		configType: "yaml",
+		env:        "development",
 	}
 
-	// 加载.env文件（如果存在）
-	_ = godotenv.Load()
+	// 应用选项
+	for _, opt := range options {
+		opt(cfg)
+	}
 
-	return &Manager{
-		v:          v,
-		configPath: configPath,
-		env:        env,
+	return cfg
+}
+
+// WithConfigPath 设置配置文件路径
+func WithConfigPath(path string) ConfigOption {
+	return func(c *Config) {
+		c.configPath = path
 	}
 }
 
-// Load 加载配置文件
-func (m *Manager) Load(configName string) error {
-	m.v.SetConfigName(configName)
-	m.v.AddConfigPath(m.configPath)
-	m.v.SetConfigType("yaml") // 默认使用yaml格式
+// WithConfigName 设置配置文件名
+func WithConfigName(name string) ConfigOption {
+	return func(c *Config) {
+		c.configName = name
+	}
+}
 
-	// 尝试加载基础配置
-	err := m.v.ReadInConfig()
-	if err != nil {
-		return err
+// WithConfigType 设置配置文件类型
+func WithConfigType(configType string) ConfigOption {
+	return func(c *Config) {
+		c.configType = configType
+	}
+}
+
+// WithEnvironment 设置环境
+func WithEnvironment(env string) ConfigOption {
+	return func(c *Config) {
+		c.env = env
+	}
+}
+
+// Load 加载配置
+func (c *Config) Load() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// 设置配置文件路径
+	c.viper.AddConfigPath(c.configPath)
+	c.viper.SetConfigName(c.configName)
+	c.viper.SetConfigType(c.configType)
+
+	// 加载环境变量
+	c.viper.AutomaticEnv()
+	c.viper.SetEnvPrefix("FLOW") // 环境变量前缀，如FLOW_APP_NAME
+	c.viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	// 尝试加载特定环境的配置文件
+	envConfigName := fmt.Sprintf("%s.%s", c.configName, c.env)
+	envConfigPath := filepath.Join(c.configPath, fmt.Sprintf("%s.%s", envConfigName, c.configType))
+	if _, err := os.Stat(envConfigPath); err == nil {
+		c.viper.SetConfigName(envConfigName)
 	}
 
-	// 尝试加载环境特定配置
-	envConfigName := configName + "." + m.env
-	m.v.SetConfigName(envConfigName)
-	_ = m.v.MergeInConfig() // 忽略环境配置不存在的错误
+	// 读取配置文件
+	if err := c.viper.ReadInConfig(); err != nil {
+		return fmt.Errorf("无法读取配置文件: %w", err)
+	}
 
-	// 允许环境变量覆盖配置
-	m.v.AutomaticEnv()
-	m.v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	// 设置文件变更监听
+	c.viper.WatchConfig()
+	c.viper.OnConfigChange(func(e fsnotify.Event) {
+		c.mu.Lock()
+		for _, callback := range c.onChangeCallbacks {
+			callback()
+		}
+		c.mu.Unlock()
+	})
 
+	c.loaded = true
 	return nil
 }
 
-// LoadAll 加载配置目录中的所有配置文件
-func (m *Manager) LoadAll() error {
-	files, err := filepath.Glob(filepath.Join(m.configPath, "*.yaml"))
-	if err != nil {
-		return err
-	}
-
-	for _, file := range files {
-		configName := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
-
-		// 跳过环境特定的配置文件，它们将在Load方法中合并
-		if strings.Contains(configName, ".") {
-			continue
-		}
-
-		err := m.Load(configName)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+// OnChange 设置配置变更回调
+func (c *Config) OnChange(callback func()) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.onChangeCallbacks = append(c.onChangeCallbacks, callback)
 }
 
-// Get 获取配置值
-func (m *Manager) Get(key string) interface{} {
-	return m.v.Get(key)
+// Get 获取指定键的配置值
+func (c *Config) Get(key string) interface{} {
+	return c.viper.Get(key)
 }
 
 // GetString 获取字符串配置值
-func (m *Manager) GetString(key string) string {
-	return m.v.GetString(key)
+func (c *Config) GetString(key string) string {
+	return c.viper.GetString(key)
 }
 
 // GetInt 获取整数配置值
-func (m *Manager) GetInt(key string) int {
-	return m.v.GetInt(key)
+func (c *Config) GetInt(key string) int {
+	return c.viper.GetInt(key)
 }
 
 // GetBool 获取布尔配置值
-func (m *Manager) GetBool(key string) bool {
-	return m.v.GetBool(key)
+func (c *Config) GetBool(key string) bool {
+	return c.viper.GetBool(key)
+}
+
+// GetFloat64 获取浮点数配置值
+func (c *Config) GetFloat64(key string) float64 {
+	return c.viper.GetFloat64(key)
+}
+
+// GetTime 获取时间配置值
+func (c *Config) GetTime(key string) time.Time {
+	return c.viper.GetTime(key)
+}
+
+// GetDuration 获取时间间隔配置值
+func (c *Config) GetDuration(key string) time.Duration {
+	return c.viper.GetDuration(key)
 }
 
 // GetStringSlice 获取字符串切片配置值
-func (m *Manager) GetStringSlice(key string) []string {
-	return m.v.GetStringSlice(key)
+func (c *Config) GetStringSlice(key string) []string {
+	return c.viper.GetStringSlice(key)
 }
 
 // GetStringMap 获取字符串映射配置值
-func (m *Manager) GetStringMap(key string) map[string]interface{} {
-	return m.v.GetStringMap(key)
+func (c *Config) GetStringMap(key string) map[string]interface{} {
+	return c.viper.GetStringMap(key)
+}
+
+// GetStringMapString 获取字符串映射字符串配置值
+func (c *Config) GetStringMapString(key string) map[string]string {
+	return c.viper.GetStringMapString(key)
+}
+
+// Unmarshal 将配置解析到结构体
+func (c *Config) Unmarshal(key string, rawVal interface{}) error {
+	return c.viper.UnmarshalKey(key, rawVal)
+}
+
+// UnmarshalWithOptions 将配置解析到结构体，支持额外选项
+func (c *Config) UnmarshalWithOptions(key string, rawVal interface{}, opts ...viper.DecoderConfigOption) error {
+	return c.viper.UnmarshalKey(key, rawVal, opts...)
 }
 
 // Set 设置配置值
-func (m *Manager) Set(key string, value interface{}) {
-	m.v.Set(key, value)
+func (c *Config) Set(key string, value interface{}) {
+	c.viper.Set(key, value)
 }
 
-// IsSet 检查配置键是否存在
-func (m *Manager) IsSet(key string) bool {
-	return m.v.IsSet(key)
+// Has 检查是否存在指定键
+func (c *Config) Has(key string) bool {
+	return c.viper.IsSet(key)
 }
 
 // AllSettings 获取所有配置
-func (m *Manager) AllSettings() map[string]interface{} {
-	return m.v.AllSettings()
+func (c *Config) AllSettings() map[string]interface{} {
+	return c.viper.AllSettings()
 }
 
-// Viper 获取内部viper实例
-func (m *Manager) Viper() *viper.Viper {
-	return m.v
+// Sub 获取子配置
+func (c *Config) Sub(key string) *Config {
+	subViper := c.viper.Sub(key)
+	if subViper == nil {
+		return nil
+	}
+
+	return &Config{
+		viper:      subViper,
+		configPath: c.configPath,
+		configName: c.configName,
+		configType: c.configType,
+		env:        c.env,
+		loaded:     true,
+	}
 }
 
-// Env 获取当前环境
-func (m *Manager) Env() string {
-	return m.env
+// IsLoaded 检查配置是否已加载
+func (c *Config) IsLoaded() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.loaded
 }
 
-// IsDevelopment 检查是否为开发环境
-func (m *Manager) IsDevelopment() bool {
-	return m.env == "development"
+// Load 加载全局配置
+func Load(path string) error {
+	once.Do(func() {
+		defaultConfig = NewConfig(WithConfigPath(path))
+	})
+	return defaultConfig.Load()
 }
 
-// IsProduction 检查是否为生产环境
-func (m *Manager) IsProduction() bool {
-	return m.env == "production"
+// Get 从全局配置中获取值
+func Get(key string) interface{} {
+	ensureLoaded()
+	return defaultConfig.Get(key)
 }
 
-// IsTest 检查是否为测试环境
-func (m *Manager) IsTest() bool {
-	return m.env == "test"
+// GetString 从全局配置中获取字符串值
+func GetString(key string) string {
+	ensureLoaded()
+	return defaultConfig.GetString(key)
+}
+
+// GetInt 从全局配置中获取整数值
+func GetInt(key string) int {
+	ensureLoaded()
+	return defaultConfig.GetInt(key)
+}
+
+// GetBool 从全局配置中获取布尔值
+func GetBool(key string) bool {
+	ensureLoaded()
+	return defaultConfig.GetBool(key)
+}
+
+// GetFloat64 从全局配置中获取浮点数值
+func GetFloat64(key string) float64 {
+	ensureLoaded()
+	return defaultConfig.GetFloat64(key)
+}
+
+// GetTime 从全局配置中获取时间值
+func GetTime(key string) time.Time {
+	ensureLoaded()
+	return defaultConfig.GetTime(key)
+}
+
+// GetDuration 从全局配置中获取时间间隔值
+func GetDuration(key string) time.Duration {
+	ensureLoaded()
+	return defaultConfig.GetDuration(key)
+}
+
+// GetStringSlice 从全局配置中获取字符串切片值
+func GetStringSlice(key string) []string {
+	ensureLoaded()
+	return defaultConfig.GetStringSlice(key)
+}
+
+// GetStringMap 从全局配置中获取字符串映射值
+func GetStringMap(key string) map[string]interface{} {
+	ensureLoaded()
+	return defaultConfig.GetStringMap(key)
+}
+
+// GetStringMapString 从全局配置中获取字符串映射字符串值
+func GetStringMapString(key string) map[string]string {
+	ensureLoaded()
+	return defaultConfig.GetStringMapString(key)
+}
+
+// Set 设置全局配置值
+func Set(key string, value interface{}) {
+	ensureLoaded()
+	defaultConfig.Set(key, value)
+}
+
+// Has 检查全局配置是否存在指定键
+func Has(key string) bool {
+	ensureLoaded()
+	return defaultConfig.Has(key)
+}
+
+// OnChange 设置全局配置变更回调
+func OnChange(callback func()) {
+	ensureLoaded()
+	defaultConfig.OnChange(callback)
+}
+
+// Unmarshal 将全局配置解析到结构体
+func Unmarshal(key string, rawVal interface{}) error {
+	ensureLoaded()
+	return defaultConfig.Unmarshal(key, rawVal)
+}
+
+// UnmarshalWithOptions 将全局配置解析到结构体，支持额外选项
+func UnmarshalWithOptions(key string, rawVal interface{}, opts ...viper.DecoderConfigOption) error {
+	ensureLoaded()
+	return defaultConfig.UnmarshalWithOptions(key, rawVal, opts...)
+}
+
+// Sub 获取全局配置的子配置
+func Sub(key string) *Config {
+	ensureLoaded()
+	return defaultConfig.Sub(key)
+}
+
+// AllSettings 获取所有全局配置
+func AllSettings() map[string]interface{} {
+	ensureLoaded()
+	return defaultConfig.AllSettings()
+}
+
+// ensureLoaded 确保全局配置已加载
+func ensureLoaded() {
+	if defaultConfig == nil {
+		panic("配置未初始化，请先调用Load()")
+	}
+	if !defaultConfig.IsLoaded() {
+		if err := defaultConfig.Load(); err != nil {
+			panic(fmt.Sprintf("加载配置失败: %v", err))
+		}
+	}
 }

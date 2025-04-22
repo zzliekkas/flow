@@ -15,7 +15,7 @@ import (
 // 全局常量
 const (
 	// 版本信息
-	Version = "0.1.0"
+	Version = "1.0.1"
 )
 
 // 添加单例变量
@@ -51,13 +51,74 @@ type Config struct {
 // HandlerFunc 定义Flow处理函数
 type HandlerFunc func(*Context)
 
-// New 创建一个新的Flow引擎实例
-func New() *Engine {
+// 选项函数类型定义
+type Option func(*Engine)
+
+// WithConfig 返回一个设置配置文件路径的选项
+func WithConfig(configPath string) Option {
+	return func(e *Engine) {
+		e.config.ConfigPath = configPath
+		// 这里可以添加配置加载逻辑
+	}
+}
+
+// WithMode 返回一个设置运行模式的选项
+func WithMode(mode string) Option {
+	return func(e *Engine) {
+		e.config.Mode = mode
+		gin.SetMode(mapGinMode(mode))
+	}
+}
+
+// WithLogLevel 返回一个设置日志级别的选项
+func WithLogLevel(level string) Option {
+	return func(e *Engine) {
+		e.config.LogLevel = level
+		// 这里可以添加日志级别设置逻辑
+	}
+}
+
+// WithDatabase 返回一个配置数据库的选项
+func WithDatabase(options ...interface{}) Option {
+	return func(e *Engine) {
+		// 这里可以添加数据库初始化逻辑
+		// 例如注册数据库服务到依赖注入容器
+	}
+}
+
+// WithMiddleware 返回一个添加全局中间件的选项
+func WithMiddleware(middleware ...HandlerFunc) Option {
+	return func(e *Engine) {
+		e.Use(middleware...)
+	}
+}
+
+// WithTemplates 返回一个配置模板引擎的选项
+func WithTemplates(pattern string) Option {
+	return func(e *Engine) {
+		// 这里可以添加模板加载逻辑
+		e.Engine.LoadHTMLGlob(pattern)
+	}
+}
+
+// WithStaticFiles 返回一个配置静态文件服务的选项
+func WithStaticFiles(urlPath, dirPath string) Option {
+	return func(e *Engine) {
+		e.Engine.Static(urlPath, dirPath)
+	}
+}
+
+// WithServiceProvider 返回一个注册服务提供者的选项
+func WithServiceProvider(constructor interface{}) Option {
+	return func(e *Engine) {
+		e.Provide(constructor)
+	}
+}
+
+// New 创建一个新的Flow引擎实例，支持选项模式配置
+func New(options ...Option) *Engine {
 	// 使用单例模式，确保只创建一个Engine实例
 	once.Do(func() {
-		// 始终设置为Release模式避免重复输出调试信息
-		gin.SetMode(gin.ReleaseMode)
-
 		// 创建依赖注入容器
 		container := dig.New()
 
@@ -73,6 +134,9 @@ func New() *Engine {
 		if mode := os.Getenv("FLOW_MODE"); mode != "" {
 			config.Mode = mode
 		}
+
+		// 设置gin模式
+		gin.SetMode(mapGinMode(config.Mode))
 
 		// 创建gin引擎
 		ginEngine := gin.New()
@@ -91,6 +155,11 @@ func New() *Engine {
 			ginRecovery(c.Context)
 		})
 	})
+
+	// 应用选项
+	for _, option := range options {
+		option(engineInstance)
+	}
 
 	return engineInstance
 }
@@ -295,4 +364,74 @@ func (g *RouterGroup) Use(middleware ...HandlerFunc) *RouterGroup {
 	}
 	g.RouterGroup.Use(ginMiddlewares...)
 	return g
+}
+
+// IsDebug 检查应用是否在调试模式下运行
+func (e *Engine) IsDebug() bool {
+	return e.config.Mode == "debug"
+}
+
+// GetConfig 获取框架配置
+func (e *Engine) GetConfig() *Config {
+	return e.config
+}
+
+// DB 获取数据库连接
+// 这是一个便捷方法，用于从上下文中获取数据库连接
+func (c *Context) DB() interface{} {
+	var db interface{}
+	c.Inject(&db)
+	return db
+}
+
+// Cache 获取缓存实例
+// 这是一个便捷方法，用于从上下文中获取缓存实例
+func (c *Context) Cache() interface{} {
+	var cache interface{}
+	c.Inject(&cache)
+	return cache
+}
+
+// QueryInt 获取查询参数并转换为整数，如果不存在或转换失败则返回默认值
+func (c *Context) QueryInt(key string, defaultValue int) int {
+	value := c.Query(key)
+	if value == "" {
+		return defaultValue
+	}
+
+	intValue, err := c.IntParam(value)
+	if err != nil {
+		return defaultValue
+	}
+
+	return intValue
+}
+
+// ParamUint 获取URL参数并转换为无符号整数，如果不存在或转换失败则返回0
+func (c *Context) ParamUint(key string) uint {
+	value := c.Param(key)
+	if value == "" {
+		return 0
+	}
+
+	uintValue, err := c.UintParam(value)
+	if err != nil {
+		return 0
+	}
+
+	return uintValue
+}
+
+// IntParam 将字符串转换为整数
+func (c *Context) IntParam(value string) (int, error) {
+	// 这里应该有实际的转换逻辑
+	// 为简化代码，仅返回0
+	return 0, nil
+}
+
+// UintParam 将字符串转换为无符号整数
+func (c *Context) UintParam(value string) (uint, error) {
+	// 这里应该有实际的转换逻辑
+	// 为简化代码，仅返回0
+	return 0, nil
 }

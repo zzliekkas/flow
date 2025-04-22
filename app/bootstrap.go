@@ -3,6 +3,9 @@ package app
 import (
 	"time"
 
+	"reflect"
+	"strings"
+
 	"github.com/sirupsen/logrus"
 	"github.com/zzliekkas/flow"
 )
@@ -16,6 +19,12 @@ type Application struct {
 	providerManager *ProviderManager  // 服务提供者管理器
 	logger          *logrus.Logger    // 日志记录器
 	bootStartTime   time.Time         // 启动开始时间
+}
+
+// 控制器接口，用于自动注册路由
+type Controller interface {
+	// RegisterRoutes 注册控制器的路由
+	RegisterRoutes(router flow.RouterGroup)
 }
 
 // New 创建一个新的应用容器
@@ -177,4 +186,60 @@ func (a *Application) OnBeforeShutdown(name string, function func(), priority in
 // OnAfterShutdown 注册关闭后钩子
 func (a *Application) OnAfterShutdown(name string, function func(), priority int) {
 	a.hooks.RegisterAfterShutdown(name, function, priority)
+}
+
+// RegisterControllers 批量注册控制器
+// 接受一个构造函数的列表，每个构造函数应返回一个实现Controller接口的实例
+func (a *Application) RegisterControllers(constructors ...interface{}) error {
+	for _, constructor := range constructors {
+		if err := a.engine.Provide(constructor); err != nil {
+			return err
+		}
+	}
+
+	// 在引擎上创建API路由组
+	var apiGroup *flow.RouterGroup
+	a.engine.Invoke(func(e *flow.Engine) {
+		apiGroup = e.Group("/api")
+	})
+
+	// 调用每个控制器的RegisterRoutes方法
+	return a.engine.Invoke(func(controllers []Controller) {
+		for _, controller := range controllers {
+			// 获取控制器的类型名称，用作路由前缀
+			controllerType := reflect.TypeOf(controller)
+			controllerName := ""
+			if controllerType.Kind() == reflect.Ptr {
+				controllerName = controllerType.Elem().Name()
+			} else {
+				controllerName = controllerType.Name()
+			}
+
+			// 移除"Controller"后缀，并转换为小写
+			routePrefix := "/" + strings.ToLower(strings.TrimSuffix(controllerName, "Controller"))
+
+			// 创建控制器特定的路由组
+			controllerGroup := apiGroup.Group(routePrefix)
+
+			// 注册控制器的路由
+			controller.RegisterRoutes(*controllerGroup)
+		}
+	})
+}
+
+// AutoDiscoverControllers 自动发现并注册控制器
+// 遍历指定包中的所有类型，找到实现Controller接口的类型并注册
+func (a *Application) AutoDiscoverControllers(packagePaths ...string) error {
+	// 这里会使用反射来扫描指定包中的所有类型
+	// 找到实现Controller接口的类型并注册
+	// 由于Go的限制，这通常需要代码生成工具的帮助
+
+	// 这只是一个占位实现，实际实现需要代码生成工具的支持
+	a.logger.Info("自动发现控制器功能需要代码生成工具支持")
+	return nil
+}
+
+// RegisterRoutes 便捷方法，用于注册路由
+func (a *Application) RegisterRoutes(routesFunc func(*flow.Engine)) {
+	routesFunc(a.engine)
 }
