@@ -3,6 +3,7 @@ package flow
 import (
 	"fmt"
 	"log"
+	"os"
 	"sync"
 
 	"github.com/zzliekkas/flow/db"
@@ -26,7 +27,10 @@ var databaseInitializer db.DbInitializer
 // registerDatabaseInitializer 注册数据库初始化器函数
 func registerDatabaseInitializer(initializer db.DbInitializer) {
 	databaseInitializer = initializer
-	log.Println("已注册数据库初始化器")
+	// 只在调试模式下输出日志
+	if os.Getenv("FLOW_DB_DEBUG") == "true" {
+		log.Println("已注册数据库初始化器")
+	}
 }
 
 // 包装函数，传递给WithDatabase选项

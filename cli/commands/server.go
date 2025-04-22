@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 	"github.com/zzliekkas/flow/cli"
 )
@@ -30,8 +31,11 @@ func NewServerCommand() *cobra.Command {
 	return cmd
 }
 
-// runServer 运行服务器的函数
+// runServer 运行服务器命令
 func runServer(cmd *cobra.Command, args []string) {
+	// 设置Gin模式为release，禁用调试警告
+	gin.SetMode(gin.ReleaseMode)
+
 	// 获取命令行参数
 	host, _ := cmd.Flags().GetString("host")
 	port, _ := cmd.Flags().GetInt("port")

@@ -2,6 +2,7 @@ package db
 
 import (
 	"log"
+	"os"
 
 	"gorm.io/gorm"
 )
@@ -20,9 +21,8 @@ func init() {
 	// 如果flow包已注册了初始化函数，则调用它
 	if flowRegisterFunc != nil {
 		flowRegisterFunc(InitializeDatabase)
-	} else {
-		log.Println("警告: 数据库初始化器注册函数未设置")
 	}
+	// 移除警告日志，减少启动时的噪音
 }
 
 // RegisterDatabaseInitializer 注册数据库初始化器到flow框架
@@ -32,6 +32,10 @@ func RegisterDatabaseInitializer(registerFunc func(DbInitializer)) {
 	// 立即注册初始化器
 	if flowRegisterFunc != nil {
 		flowRegisterFunc(InitializeDatabase)
+		// 这里添加一个调试级别的日志，可以通过环境变量控制是否显示
+		if os.Getenv("FLOW_DB_DEBUG") == "true" {
+			log.Println("已注册数据库初始化器")
+		}
 	}
 }
 
