@@ -24,7 +24,7 @@ import (
 // 全局常量
 const (
 	// 版本信息
-	Version = "1.0.6"
+	Version = "1.0.8"
 
 	FlowBanner = `
 [%s] [INFO] 

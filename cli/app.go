@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/zzliekkas/flow"
 )
 
 // 定义Banner常量
@@ -92,7 +93,7 @@ func (a *App) Run() error {
 
 // NewFlowCLI 创建默认的Flow CLI应用程序
 func NewFlowCLI() *App {
-	return NewApp("flow", "1.0.6", "Flow框架命令行工具")
+	return NewApp("flow", flow.Version, "Flow框架命令行工具")
 }
 
 // PrintError 打印错误信息并退出

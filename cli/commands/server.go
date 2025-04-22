@@ -33,9 +33,6 @@ func NewServerCommand() *cobra.Command {
 
 // runServer 运行服务器命令
 func runServer(cmd *cobra.Command, args []string) {
-	// 设置Gin模式为release，禁用调试警告
-	gin.SetMode(gin.ReleaseMode)
-
 	// 获取命令行参数
 	host, _ := cmd.Flags().GetString("host")
 	port, _ := cmd.Flags().GetInt("port")
@@ -49,6 +46,17 @@ func runServer(cmd *cobra.Command, args []string) {
 		mode = "production"
 		// 在生产模式下禁用监视
 		watch = false
+
+		// 设置环境变量确保Flow和Gin使用release模式
+		os.Setenv("FLOW_MODE", "release")
+		os.Setenv("GIN_MODE", "release")
+
+		// 设置Gin模式为release，禁用调试警告
+		gin.SetMode(gin.ReleaseMode)
+	} else {
+		// 明确设置为release模式以禁用警告
+		os.Setenv("GIN_MODE", "release")
+		gin.SetMode(gin.ReleaseMode)
 	}
 
 	// 显示服务器启动信息
