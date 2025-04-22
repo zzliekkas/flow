@@ -1,5 +1,10 @@
 package flow
 
+// 导入优先级：
+// 1. 标准库
+// 2. 内部ginmode包 (确保在gin之前初始化)
+// 3. 外部依赖
+// 4. 内部包
 import (
 	"context"
 	"fmt"
@@ -14,6 +19,9 @@ import (
 	"syscall"
 	"time"
 
+	// 确保在导入gin之前设置好gin模式
+	_ "github.com/zzliekkas/flow/ginmode"
+
 	"github.com/gin-gonic/gin"
 	"github.com/zzliekkas/flow/config"
 	"github.com/zzliekkas/flow/db"
@@ -24,7 +32,7 @@ import (
 // 全局常量
 const (
 	// 版本信息
-	Version = "1.0.8"
+	Version = "1.0.9"
 
 	FlowBanner = `
 [%s] [INFO] 
@@ -164,8 +172,8 @@ func applyConfigToEngine(e *Engine, cfg *config.Config) {
 
 	// 应用模式设置
 	if mode := cfg.GetString("app.mode"); mode != "" {
-		e.config.Mode = mode
-		gin.SetMode(mapGinMode(mode))
+		// 使用WithMode选项设置模式，确保一致性
+		WithMode(mode)(e)
 	}
 
 	// 应用日志级别设置
@@ -191,8 +199,29 @@ func applyConfigToEngine(e *Engine, cfg *config.Config) {
 // WithMode 返回一个设置运行模式的选项
 func WithMode(mode string) Option {
 	return func(e *Engine) {
+		// 设置flow模式
 		e.config.Mode = mode
-		gin.SetMode(mapGinMode(mode))
+
+		// 同步设置gin模式，保持一致性
+		var ginMode string
+		switch strings.ToLower(mode) {
+		case "release", "production":
+			ginMode = "release"
+		case "test":
+			ginMode = "test"
+		case "debug", "development":
+			ginMode = "debug"
+		default:
+			// 未知模式默认为debug
+			ginMode = "debug"
+		}
+
+		// 设置GIN_MODE环境变量和gin模式
+		os.Setenv("GIN_MODE", ginMode)
+		gin.SetMode(ginMode)
+
+		// 同时设置FLOW_MODE环境变量，保持一致性
+		os.Setenv("FLOW_MODE", mode)
 	}
 }
 
@@ -308,20 +337,29 @@ func New(options ...Option) *Engine {
 		container := dig.New()
 
 		// 默认配置
+		defaultMode := "debug"
+		// 检查环境变量中的配置
+		if flowMode := os.Getenv("FLOW_MODE"); flowMode != "" {
+			defaultMode = flowMode
+		}
+		// 保持与GIN_MODE一致性
+		if ginMode := os.Getenv("GIN_MODE"); ginMode != "" {
+			switch ginMode {
+			case "release":
+				defaultMode = "release"
+			case "test":
+				defaultMode = "test"
+			case "debug":
+				defaultMode = "debug"
+			}
+		}
+
 		config := &Config{
-			Mode:       "debug",
+			Mode:       defaultMode,
 			JSONLib:    "default",
 			LogLevel:   "info",
 			ConfigPath: "./config",
 		}
-
-		// 检查环境变量中的配置
-		if mode := os.Getenv("FLOW_MODE"); mode != "" {
-			config.Mode = mode
-		}
-
-		// 设置gin模式
-		gin.SetMode(mapGinMode(config.Mode))
 
 		// 创建gin引擎
 		ginEngine := gin.New()
