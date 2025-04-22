@@ -5,8 +5,10 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/gin-gonic/gin"
+	"github.com/zzliekkas/flow/cli/banner"
 	"go.uber.org/dig"
 )
 
@@ -14,6 +16,12 @@ import (
 const (
 	// 版本信息
 	Version = "0.1.0"
+)
+
+// 添加单例变量
+var (
+	engineInstance *Engine
+	once           sync.Once
 )
 
 // H is a shortcut for map[string]interface{}
@@ -45,43 +53,46 @@ type HandlerFunc func(*Context)
 
 // New 创建一个新的Flow引擎实例
 func New() *Engine {
-	// 创建依赖注入容器
-	container := dig.New()
+	// 使用单例模式，确保只创建一个Engine实例
+	once.Do(func() {
+		// 始终设置为Release模式避免重复输出调试信息
+		gin.SetMode(gin.ReleaseMode)
 
-	// 默认配置
-	config := &Config{
-		Mode:       "debug",
-		JSONLib:    "default",
-		LogLevel:   "info",
-		ConfigPath: "./config",
-	}
+		// 创建依赖注入容器
+		container := dig.New()
 
-	// 检查环境变量中的配置
-	if mode := os.Getenv("FLOW_MODE"); mode != "" {
-		config.Mode = mode
-	}
+		// 默认配置
+		config := &Config{
+			Mode:       "debug",
+			JSONLib:    "default",
+			LogLevel:   "info",
+			ConfigPath: "./config",
+		}
 
-	// 设置gin模式
-	gin.SetMode(mapGinMode(config.Mode))
+		// 检查环境变量中的配置
+		if mode := os.Getenv("FLOW_MODE"); mode != "" {
+			config.Mode = mode
+		}
 
-	// 创建gin引擎
-	ginEngine := gin.New()
+		// 创建gin引擎
+		ginEngine := gin.New()
 
-	// 创建并返回Flow引擎
-	engine := &Engine{
-		Engine:    ginEngine,
-		container: container,
-		config:    config,
-	}
+		// 创建Flow引擎
+		engineInstance = &Engine{
+			Engine:    ginEngine,
+			container: container,
+			config:    config,
+		}
 
-	// 添加默认中间件 - 修复类型不匹配问题
-	// 使用gin原生的Recovery中间件，并包装成Flow的HandlerFunc
-	engine.Use(func(c *Context) {
-		ginRecovery := gin.Recovery()
-		ginRecovery(c.Context)
+		// 添加默认中间件 - 修复类型不匹配问题
+		// 使用gin原生的Recovery中间件，并包装成Flow的HandlerFunc
+		engineInstance.Use(func(c *Context) {
+			ginRecovery := gin.Recovery()
+			ginRecovery(c.Context)
+		})
 	})
 
-	return engine
+	return engineInstance
 }
 
 // mapGinMode 将Flow模式映射到Gin模式
@@ -187,6 +198,9 @@ func (e *Engine) Invoke(function interface{}) error {
 
 // Run 启动HTTP服务器
 func (e *Engine) Run(addr ...string) error {
+	// 显示Flow框架Banner
+	banner.Print(Version, "Web Framework for Go")
+
 	return e.Engine.Run(addr...)
 }
 
