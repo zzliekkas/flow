@@ -435,50 +435,215 @@ Flow框架的后续开发计划分为以下几个阶段：
    
    **完成情况**：安全框架已全部实现完成，为Flow应用提供了全面的Web安全保障。框架支持内容安全策略(CSP)、XSS防护、HSTS和其他关键安全头部、密码策略验证以及详细的安全审计日志记录。这些功能均采用配置驱动的方式，可以根据应用需求灵活开启和调整，同时提供合理的默认配置，确保即使在最小配置下也能维持基本的安全性。
 
-#### Phase 5: 高级功能 (已完成) ✅
+#### Phase 5: 第三方登录集成 🔄 (进行中)
 
-1. **任务队列和调度** (优先级：高) ✅
-   - [x] 队列接口设计 (`queue/queue.go`)
-   - [x] 与事件系统集成 (`queue/event_integration.go`)
-   - [x] 多驱动支持(Redis、内存队列) (`queue/memory/`, `queue/redis/`)
-   - [x] 任务调度功能
-   - [x] 定时任务支持
-   - [x] 失败任务重试机制
-
-2. **WebSocket支持** (优先级：中) ✅
-   - [x] WebSocket管理器 (`websocket/manager.go`)
-   - [x] 频道系统 (`websocket/channel.go`)
-   - [x] 与事件系统集成 (`websocket/event_integration.go`)
-   - [x] 客户端API (`websocket/client.go`)
+1. **第三方登录框架** (优先级：高)
+   - [x] 统一的OAuth2客户端抽象 (`auth/oauth/client.go`)
+   - [x] 社交登录管理器 (`auth/social/manager.go`)
+   - [x] 用户信息映射器 (`auth/social/mapper.go`)
+   - [x] 状态管理与安全验证 (`auth/social/state.go`)
    
-   **为什么这样做**：实时应用已成为现代Web体验的重要部分，WebSocket是实现这一需求的关键技术。通过集成事件系统和频道机制，我们让开发者能轻松构建聊天室、实时通知等功能，而无需关心底层连接管理的复杂性。管理器负责连接生命周期，频道系统处理消息路由，客户端API则简化前端集成，提供完整的实时通信解决方案。
+   **为什么这样做**：第三方登录是现代Web应用的标配功能，通过统一的抽象层和管理器，我们可以轻松集成各种社交平台的登录功能，同时保持代码的一致性和可维护性。
 
-3. **文件存储系统** (优先级：中) ✅
-   - [x] 统一存储接口 (`storage/filesystem.go`)
-   - [x] 与缓存系统区分的文件管理 (`storage/manager.go`)
-   - [x] 云存储驱动(S3、OSS等) (`storage/cloud/`)
-   - [x] 文件元数据管理 (`storage/metadata.go`)
-   - [x] 文件上传助手 (`storage/uploader.go`)
-   
-   **为什么这样做**：几乎所有应用都需要管理文件，从简单的头像上传到复杂的文档管理。统一的存储接口让应用代码不需关心底层存储位置，可以无缝地从本地迁移到云存储。文件元数据管理和上传助手则大大简化了文件处理流程，处理安全、验证、格式转换等常见需求，使开发者专注于业务功能而非技术细节。
+2. **主要平台支持** (优先级：高)
+   - [x] GitHub登录 (`auth/providers/github.go`)
+     * OAuth2认证流程
+     * 用户信息获取
+     * 头像和邮箱同步
+   - [x] Google登录 (`auth/providers/google.go`)
+     * OAuth2/OpenID Connect支持
+     * 个人资料同步
+     * 刷新令牌管理
+   - [x] 微信登录 (`auth/providers/wechat.go`)
+     * 公众号/开放平台登录
+     * 小程序登录支持
+     * UnionID和OpenID处理
+   - [x] 支付宝登录 (`auth/providers/alipay.go`)
+     * OAuth2认证流程
+     * 用户信息获取
+     * 支付宝账号绑定
 
-4. **国际化与本地化** (已完成) ✅
-   - [x] 通用国际化接口 (`i18n/translator.go`)
-   - [x] 多语言文件管理 (`i18n/manager.go`)
-   - [x] 复数和日期格式化 (`i18n/formatter.go`)
-   - [x] 本地化中间件 (`middleware/locale.go`)
-   - [x] 与验证系统集成 (`i18n/validation_integration.go`)
+3. **功能增强** (优先级：中)
+   - [x] 多账号绑定 (`auth/social/binding.go`)
+   - [x] 自动注册流程 (`auth/social/register.go`)
+   - [x] 头像和资料同步 (`auth/social/sync.go`)
+   - [x] 登录状态管理 (`auth/social/session.go`)
    
-   **为什么这样做**：全球化应用需要适应不同语言和地区的用户需求。我们的国际化系统不只是简单的文本翻译，还包括复数形式处理、日期格式化等复杂本地化需求。与验证系统的集成确保了错误消息也能正确翻译，提供一致的用户体验。通过本地化中间件，应用可以自动检测用户首选语言，实现无缝的多语言支持。
+   **为什么这样做**：增强功能使第三方登录更加完整和实用。多账号绑定允许用户关联多个社交账号；自动注册简化新用户加入流程；资料同步确保用户信息及时更新；会话管理则提供安全可靠的登录状态控制。
 
-5. **云原生支持** (优先级：中) ✅
-   - [x] 容器化配置适配 (`cloud/container.go`)
-   - [x] 健康检查机制 (`cloud/health.go`)
-   - [x] 优雅启动/关闭 (`cloud/lifecycle.go`)
-   - [x] 分布式追踪集成 (`cloud/tracing.go`)
-   - [x] 云服务提供商适配器 (`cloud/providers/`)
+4. **安全与隐私** (优先级：高)
+   - [x] CSRF防护 (`auth/social/csrf.go`)
+   - [x] 状态验证 (`auth/social/state.go`)
+   - [x] 数据加密 (`auth/social/crypto.go`)
+   - [x] 隐私控制 (`auth/social/privacy.go`)
    
-   **完成情况**：云原生支持模块已全部实现，提供了完善的容器环境适配、健康检查、优雅启动/关闭以及分布式追踪等功能。该模块可自动检测容器环境并调整配置，提供符合Kubernetes期望的健康检查端点，支持信号处理和优雅关闭，以及与OpenTelemetry的集成。此外，云服务提供商适配器简化了与AWS等云服务的交互，使应用可以无缝部署到各种云环境。
+   **为什么这样做**：安全和隐私是第三方登录中的关键考虑因素。CSRF防护和状态验证确保登录流程的安全性；数据加密保护敏感信息；隐私控制让用户可以管理其社交账号的数据访问权限。
+
+### 使用示例
+
+```go
+package main
+
+import (
+    "github.com/zzliekkas/flow"
+    "github.com/zzliekkas/flow/auth/social"
+)
+
+func main() {
+    // 创建社交登录管理器
+    socialManager := social.NewManager()
+
+    // 配置GitHub登录
+    socialManager.AddProvider(social.ProviderConfig{
+        Provider:     "github",
+        ClientID:     "your-github-client-id",
+        ClientSecret: "your-github-client-secret",
+        RedirectURL:  "https://your-app.com/auth/github/callback",
+        Scopes:       []string{"user:email"},
+    })
+
+    // 配置Google登录
+    socialManager.AddProvider(social.ProviderConfig{
+        Provider:     "google",
+        ClientID:     "your-google-client-id",
+        ClientSecret: "your-google-client-secret",
+        RedirectURL:  "https://your-app.com/auth/google/callback",
+        Scopes:       []string{"profile", "email"},
+    })
+
+    // 配置微信登录
+    socialManager.AddProvider(social.ProviderConfig{
+        Provider:     "wechat",
+        ClientID:     "your-wechat-appid",
+        ClientSecret: "your-wechat-secret",
+        RedirectURL:  "https://your-app.com/auth/wechat/callback",
+        Scopes:       []string{"snsapi_login"},
+    })
+
+    // 配置支付宝登录
+    socialManager.AddProvider(social.ProviderConfig{
+        Provider:     "alipay",
+        ClientID:     "your-alipay-appid",
+        ClientSecret: "your-alipay-private-key",
+        RedirectURL:  "https://your-app.com/auth/alipay/callback",
+        Scopes:       []string{"auth_user"},
+    })
+
+    // 创建Flow应用
+    app := flow.New()
+
+    // 注册社交登录路由
+    app.GET("/auth/:provider", socialManager.HandleLogin())
+    app.GET("/auth/:provider/callback", socialManager.HandleCallback())
+
+    // 启动应用
+    app.Run(":8080")
+}
+```
+
+### 配置说明
+
+在`config/auth.yaml`中配置第三方登录信息：
+
+```yaml
+auth:
+  social:
+    github:
+      client_id: "your-github-client-id"
+      client_secret: "your-github-client-secret"
+      redirect_url: "https://your-app.com/auth/github/callback"
+      scopes: ["user:email"]
+    
+    google:
+      client_id: "your-google-client-id"
+      client_secret: "your-google-client-secret"
+      redirect_url: "https://your-app.com/auth/google/callback"
+      scopes: ["profile", "email"]
+    
+    wechat:
+      client_id: "your-wechat-appid"
+      client_secret: "your-wechat-secret"
+      redirect_url: "https://your-app.com/auth/wechat/callback"
+      scopes: ["snsapi_login"]
+    
+    alipay:
+      client_id: "your-alipay-appid"
+      client_secret: "your-alipay-private-key"
+      redirect_url: "https://your-app.com/auth/alipay/callback"
+      scopes: ["auth_user"]
+```
+
+### 前端集成
+
+在您的前端页面中添加登录按钮：
+
+```html
+<!-- 社交登录按钮 -->
+<div class="social-login">
+    <!-- GitHub登录 -->
+    <a href="/auth/github" class="social-button github">
+        <i class="fab fa-github"></i> GitHub登录
+    </a>
+
+    <!-- Google登录 -->
+    <a href="/auth/google" class="social-button google">
+        <i class="fab fa-google"></i> Google登录
+    </a>
+
+    <!-- 微信登录 -->
+    <a href="/auth/wechat" class="social-button wechat">
+        <i class="fab fa-weixin"></i> 微信登录
+    </a>
+
+    <!-- 支付宝登录 -->
+    <a href="/auth/alipay" class="social-button alipay">
+        <i class="fab fa-alipay"></i> 支付宝登录
+    </a>
+</div>
+```
+
+### 样式示例
+
+```css
+.social-login {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 300px;
+    margin: 20px auto;
+}
+
+.social-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    border-radius: 5px;
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.social-button i {
+    margin-right: 10px;
+}
+
+.github {
+    background-color: #24292e;
+}
+
+.google {
+    background-color: #4285f4;
+}
+
+.wechat {
+    background-color: #07c160;
+}
+
+.alipay {
+    background-color: #1677ff;
+}
+```
 
 #### Phase 6: 开发者工具 (已完成) ✅
 
