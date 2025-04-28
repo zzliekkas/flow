@@ -53,8 +53,3 @@ func initDatabaseProvider() (interface{}, error) {
 
 	return provider, nil
 }
-
-// 注意: WithDatabase函数实现已移至flow.go
-// 请参阅flow.go中的实现
-
-// 其他数据库相关功能可以在此添加
