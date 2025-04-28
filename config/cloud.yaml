@@ -1,0 +1,24 @@
+cloud:
+  # 当前使用的云服务提供商: aws, aliyun, huawei
+  provider: "aliyun"
+  
+  # AWS S3配置
+  aws:
+    region: "ap-east-1"
+    endpoint: ""
+    accessKey: "${AWS_ACCESS_KEY}"
+    secretKey: "${AWS_SECRET_KEY}"
+    
+  # 阿里云OSS配置
+  aliyun:
+    region: "cn-hangzhou"
+    endpoint: "oss-cn-hangzhou.aliyuncs.com"
+    accessKey: "${ALIYUN_ACCESS_KEY}"
+    secretKey: "${ALIYUN_SECRET_KEY}"
+    
+  # 华为云OBS配置
+  huawei:
+    region: "cn-north-4"
+    endpoint: "obs.cn-north-4.myhuaweicloud.com"
+    accessKey: "${HUAWEI_ACCESS_KEY}"
+    secretKey: "${HUAWEI_SECRET_KEY}" 
