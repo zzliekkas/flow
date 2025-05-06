@@ -53,3 +53,20 @@ func initDatabaseProvider() (interface{}, error) {
 
 	return provider, nil
 }
+
+// WithDatabase 配置数据库连接
+// 传入各种配置选项，如直接的Config、ConnectionOption函数或配置结构
+func (e *Engine) WithDatabase(options ...interface{}) *Engine {
+	// 线程安全地更新选项
+	dbOptionsMutex.Lock()
+	// 创建新切片并正确复制
+	databaseOptions = make([]interface{}, len(options))
+	copy(databaseOptions, options) // 正确的复制顺序
+	dbOptionsMutex.Unlock()
+
+	// 添加数据库初始化提供者
+	e.Provide(initDatabaseProvider)
+
+	// 支持链式调用
+	return e
+}

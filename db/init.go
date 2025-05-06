@@ -3,6 +3,7 @@ package db
 import (
 	"log"
 	"os"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -74,6 +75,31 @@ func InitializeDatabase(options []interface{}) (interface{}, error) {
 		case func(*Manager):
 			// 直接应用函数选项
 			o(manager)
+		case map[string]interface{}:
+			// 处理嵌套的配置结构
+			if dbConfig, found := processNestedConfig(o); found {
+				if name, ok := dbConfig["default"].(string); ok && name != "" {
+					// 使用指定的默认连接名称
+					manager.SetDefaultConnection(name)
+				}
+
+				// 处理配置中的connections部分
+				if connections, ok := o["connections"].(map[string]interface{}); ok {
+					for connName, connConfig := range connections {
+						if config, ok := createConfigFromMap(connConfig); ok {
+							manager.Register(connName, config)
+						}
+					}
+				}
+			}
+		default:
+			// 尝试处理其他类型的配置对象
+			if configObj, ok := extractDatabaseConfig(o); ok {
+				// 处理从对象中提取的配置
+				for name, config := range configObj {
+					manager.Register(name, config)
+				}
+			}
 		}
 	}
 
@@ -88,6 +114,111 @@ func InitializeDatabase(options []interface{}) (interface{}, error) {
 		Manager: manager,
 		DB:      db,
 	}, nil
+}
+
+// processNestedConfig 处理嵌套的配置结构
+func processNestedConfig(config map[string]interface{}) (map[string]interface{}, bool) {
+	// 检查是否有database键
+	if dbConfig, ok := config["database"].(map[string]interface{}); ok {
+		return dbConfig, true
+	}
+
+	// 检查是否直接包含数据库配置
+	if _, ok := config["default"]; ok {
+		if _, ok := config["connections"]; ok {
+			return config, true
+		}
+	}
+
+	return nil, false
+}
+
+// createConfigFromMap 从映射创建数据库配置
+func createConfigFromMap(configMap interface{}) (Config, bool) {
+	config := Config{}
+
+	if cm, ok := configMap.(map[string]interface{}); ok {
+		// 设置基本属性
+		if driver, ok := cm["driver"].(string); ok {
+			config.Driver = driver
+		} else {
+			return config, false
+		}
+
+		// 设置连接信息
+		if host, ok := cm["host"].(string); ok {
+			config.Host = host
+		}
+
+		if port, ok := cm["port"].(int); ok {
+			config.Port = port
+		}
+
+		if database, ok := cm["database"].(string); ok {
+			config.Database = database
+		}
+
+		if username, ok := cm["username"].(string); ok {
+			config.Username = username
+		}
+
+		if password, ok := cm["password"].(string); ok {
+			config.Password = password
+		}
+
+		// 设置其他连接参数
+		if charset, ok := cm["charset"].(string); ok {
+			config.Charset = charset
+		}
+
+		if sslmode, ok := cm["sslmode"].(string); ok {
+			config.SSLMode = sslmode
+		}
+
+		if timezone, ok := cm["timezone"].(string); ok {
+			config.TimeZone = timezone
+		}
+
+		// 设置默认值
+		config.MaxIdleConns = 10
+		config.MaxOpenConns = 100
+		config.ConnMaxLifetime = time.Hour
+
+		// 从配置中获取连接池设置
+		if maxIdle, ok := cm["max_idle_conns"].(int); ok {
+			config.MaxIdleConns = maxIdle
+		}
+
+		if maxOpen, ok := cm["max_open_conns"].(int); ok {
+			config.MaxOpenConns = maxOpen
+		}
+
+		return config, true
+	}
+
+	return config, false
+}
+
+// extractDatabaseConfig 从各种类型的对象中提取数据库配置
+func extractDatabaseConfig(obj interface{}) (map[string]Config, bool) {
+	// 使用反射来尝试获取对象的数据库配置字段
+	// 这是一个简化版实现，实际可能需要更复杂的反射逻辑
+
+	// 尝试检查常见的配置对象方法
+	if configProvider, ok := obj.(interface{ GetDatabaseConfig() map[string]Config }); ok {
+		return configProvider.GetDatabaseConfig(), true
+	}
+
+	// 尝试通过Get方法获取数据库配置
+	if getter, ok := obj.(interface{ Get(string) interface{} }); ok {
+		if dbConfig := getter.Get("database"); dbConfig != nil {
+			if configMap, ok := dbConfig.(map[string]Config); ok {
+				return configMap, true
+			}
+		}
+	}
+
+	return nil, false
 }
 
 // DbProvider 数据库服务提供者(重命名以避免冲突)

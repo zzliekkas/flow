@@ -406,75 +406,148 @@ func (m *Manager) checkHealth(name string, config Config) bool {
 	return sqlDB.PingContext(ctx) == nil
 }
 
-// FromConfig 从配置中加载数据库配置
+// FromConfig 从配置管理器加载数据库配置
 func (m *Manager) FromConfig(configManager *config.Manager) error {
-	if configManager == nil {
-		return errors.New("配置管理器不能为空")
+	// 先尝试新的嵌套配置格式
+	if configManager.Get("database") != nil {
+		return m.fromNestedConfig(configManager)
 	}
 
+	// 如果没有找到嵌套格式，回退到旧版平铺格式
+	return m.fromFlatConfig(configManager)
+}
+
+// fromNestedConfig 从嵌套配置加载数据库设置
+func (m *Manager) fromNestedConfig(configManager *config.Manager) error {
 	// 获取默认连接名称
 	defaultConn := configManager.GetString("database.default")
 	if defaultConn != "" {
 		m.SetDefaultConnection(defaultConn)
 	}
 
-	// 获取所有连接配置
-	connectionsMap := configManager.GetStringMap("database.connections")
-	if len(connectionsMap) == 0 {
-		return nil // 没有配置数据库连接，可能是不需要数据库的应用
+	// 获取连接配置
+	connectionsConfig := configManager.Get("database.connections")
+	if connectionsConfig == nil {
+		return ErrInvalidConfiguration
 	}
 
-	// 遍历并注册数据库配置
-	for name, configData := range connectionsMap {
-		if configMap, ok := configData.(map[string]interface{}); ok {
-			config := Config{
-				Driver:   getString(configMap, "driver", ""),
-				Host:     getString(configMap, "host", "localhost"),
-				Port:     getInt(configMap, "port", 3306),
-				Database: getString(configMap, "database", ""),
-				Username: getString(configMap, "username", ""),
-				Password: getString(configMap, "password", ""),
-				Charset:  getString(configMap, "charset", "utf8mb4"),
-				SSLMode:  getString(configMap, "sslmode", "disable"),
-				TimeZone: getString(configMap, "timezone", "Local"),
+	connections, ok := connectionsConfig.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("无效的数据库连接配置格式")
+	}
 
-				MaxIdleConns:    getInt(configMap, "max_idle_conns", 10),
-				MaxOpenConns:    getInt(configMap, "max_open_conns", 100),
-				ConnMaxLifetime: getDuration(configMap, "conn_max_lifetime", time.Hour),
-				ConnMaxIdleTime: getDuration(configMap, "conn_max_idle_time", time.Hour),
+	// 处理每个连接
+	for name, connConfig := range connections {
+		connMap, ok := connConfig.(map[string]interface{})
+		if !ok {
+			continue
+		}
 
-				HealthCheck:        getBool(configMap, "health_check", true),
-				HealthCheckPeriod:  getDuration(configMap, "health_check_period", 30*time.Second),
-				HealthCheckTimeout: getDuration(configMap, "health_check_timeout", 5*time.Second),
-				HealthCheckSQL:     getString(configMap, "health_check_sql", "SELECT 1"),
-			}
+		// 创建配置
+		config := Config{
+			Driver:   getString(connMap, "driver", ""),
+			Host:     getString(connMap, "host", "localhost"),
+			Port:     getInt(connMap, "port", 3306),
+			Database: getString(connMap, "database", ""),
+			Username: getString(connMap, "username", ""),
+			Password: getString(connMap, "password", ""),
+			Charset:  getString(connMap, "charset", "utf8mb4"),
+			SSLMode:  getString(connMap, "sslmode", "disable"),
+			TimeZone: getString(connMap, "timezone", "Local"),
 
-			// 从库配置
-			if replicasData, exists := configMap["replicas"]; exists {
-				if replicasList, ok := replicasData.([]interface{}); ok {
-					for _, replicaData := range replicasList {
-						if replicaMap, ok := replicaData.(map[string]interface{}); ok {
-							replica := ReplicaConfig{
-								Host:     getString(replicaMap, "host", config.Host),
-								Port:     getInt(replicaMap, "port", config.Port),
-								Username: getString(replicaMap, "username", config.Username),
-								Password: getString(replicaMap, "password", config.Password),
-								SSLMode:  getString(replicaMap, "sslmode", config.SSLMode),
-								Weight:   getInt(replicaMap, "weight", 1),
-							}
-							config.Replicas = append(config.Replicas, replica)
-						}
-					}
-				}
-			}
+			MaxIdleConns:    getInt(connMap, "max_idle_conns", 10),
+			MaxOpenConns:    getInt(connMap, "max_open_conns", 100),
+			ConnMaxLifetime: getDuration(connMap, "conn_max_lifetime", time.Hour),
+			ConnMaxIdleTime: getDuration(connMap, "conn_max_idle_time", 30*time.Minute),
 
-			if err := m.Register(name, config); err != nil {
-				return err
-			}
+			HealthCheck:        getBool(connMap, "health_check", false),
+			HealthCheckPeriod:  getDuration(connMap, "health_check_period", 30*time.Second),
+			HealthCheckTimeout: getDuration(connMap, "health_check_timeout", 5*time.Second),
+			HealthCheckSQL:     getString(connMap, "health_check_sql", "SELECT 1"),
+		}
+
+		// 注册配置
+		if err := m.Register(name, config); err != nil {
+			return err
 		}
 	}
 
 	return nil
+}
+
+// fromFlatConfig 从平铺配置加载数据库设置 (旧版格式)
+func (m *Manager) fromFlatConfig(configManager *config.Manager) error {
+	// 旧版平铺配置加载逻辑
+	driver := configManager.GetString("database.driver")
+	if driver == "" {
+		return ErrInvalidConfiguration
+	}
+
+	config := Config{
+		Driver:   driver,
+		Host:     configManager.GetString("database.host"),
+		Port:     configManager.GetInt("database.port"),
+		Database: configManager.GetString("database.database"),
+		Username: configManager.GetString("database.username"),
+		Password: configManager.GetString("database.password"),
+		Charset:  configManager.GetString("database.charset"),
+		SSLMode:  configManager.GetString("database.sslmode"),
+		TimeZone: configManager.GetString("database.timezone"),
+
+		MaxIdleConns:    configManager.GetInt("database.max_idle_conns"),
+		MaxOpenConns:    configManager.GetInt("database.max_open_conns"),
+		ConnMaxLifetime: configManager.GetDuration("database.conn_max_lifetime"),
+		ConnMaxIdleTime: configManager.GetDuration("database.conn_max_idle_time"),
+
+		HealthCheck:        configManager.GetBool("database.health_check"),
+		HealthCheckPeriod:  configManager.GetDuration("database.health_check_period"),
+		HealthCheckTimeout: configManager.GetDuration("database.health_check_timeout"),
+		HealthCheckSQL:     configManager.GetString("database.health_check_sql"),
+	}
+
+	// 设置默认值
+	if config.Port == 0 {
+		switch config.Driver {
+		case MySQL:
+			config.Port = 3306
+		case PostgreSQL:
+			config.Port = 5432
+		}
+	}
+
+	if config.Charset == "" {
+		config.Charset = "utf8mb4"
+	}
+
+	if config.MaxIdleConns == 0 {
+		config.MaxIdleConns = 10
+	}
+
+	if config.MaxOpenConns == 0 {
+		config.MaxOpenConns = 100
+	}
+
+	if config.ConnMaxLifetime == 0 {
+		config.ConnMaxLifetime = time.Hour
+	}
+
+	if config.ConnMaxIdleTime == 0 {
+		config.ConnMaxIdleTime = 30 * time.Minute
+	}
+
+	if config.HealthCheckPeriod == 0 {
+		config.HealthCheckPeriod = 30 * time.Second
+	}
+
+	if config.HealthCheckTimeout == 0 {
+		config.HealthCheckTimeout = 5 * time.Second
+	}
+
+	if config.HealthCheckSQL == "" {
+		config.HealthCheckSQL = "SELECT 1"
+	}
+
+	return m.Register("default", config)
 }
 
 // 辅助函数：从map中获取字符串值
