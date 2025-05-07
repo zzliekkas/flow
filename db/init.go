@@ -1,8 +1,11 @@
 package db
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"reflect"
+	"regexp"
 	"time"
 
 	"gorm.io/gorm"
@@ -16,6 +19,9 @@ var databaseOptions []interface{}
 
 // 全局变量，用于存储flow包导出的注册函数
 var flowRegisterFunc func(DbInitializer)
+
+// 为测试启用的标志
+var skipDatabaseConnection = false
 
 // 用于初始化数据库的包级函数
 func init() {
@@ -84,7 +90,7 @@ func InitializeDatabase(options []interface{}) (interface{}, error) {
 				}
 
 				// 处理配置中的connections部分
-				if connections, ok := o["connections"].(map[string]interface{}); ok {
+				if connections, ok := dbConfig["connections"].(map[string]interface{}); ok {
 					for connName, connConfig := range connections {
 						if config, ok := createConfigFromMap(connConfig); ok {
 							manager.Register(connName, config)
@@ -103,6 +109,16 @@ func InitializeDatabase(options []interface{}) (interface{}, error) {
 		}
 	}
 
+	// 当skipDatabaseConnection为true时，跳过实际连接数据库
+	// 这主要用于测试
+	if skipDatabaseConnection {
+		// 只进行初始化，不连接数据库
+		return &DbProvider{
+			Manager: manager,
+			DB:      nil,
+		}, nil
+	}
+
 	// 返回默认数据库连接
 	db, err := manager.Default()
 	if err != nil {
@@ -116,109 +132,214 @@ func InitializeDatabase(options []interface{}) (interface{}, error) {
 	}, nil
 }
 
-// processNestedConfig 处理嵌套的配置结构
+// 处理嵌套配置结构
+// 返回数据库配置部分和是否找到配置的标志
 func processNestedConfig(config map[string]interface{}) (map[string]interface{}, bool) {
-	// 检查是否有database键
-	if dbConfig, ok := config["database"].(map[string]interface{}); ok {
-		return dbConfig, true
-	}
-
-	// 检查是否直接包含数据库配置
-	if _, ok := config["default"]; ok {
-		if _, ok := config["connections"]; ok {
-			return config, true
-		}
-	}
-
-	return nil, false
-}
-
-// createConfigFromMap 从映射创建数据库配置
-func createConfigFromMap(configMap interface{}) (Config, bool) {
-	config := Config{}
-
-	if cm, ok := configMap.(map[string]interface{}); ok {
-		// 设置基本属性
-		if driver, ok := cm["driver"].(string); ok {
-			config.Driver = driver
-		} else {
-			return config, false
-		}
-
-		// 设置连接信息
-		if host, ok := cm["host"].(string); ok {
-			config.Host = host
-		}
-
-		if port, ok := cm["port"].(int); ok {
-			config.Port = port
-		}
-
-		if database, ok := cm["database"].(string); ok {
-			config.Database = database
-		}
-
-		if username, ok := cm["username"].(string); ok {
-			config.Username = username
-		}
-
-		if password, ok := cm["password"].(string); ok {
-			config.Password = password
-		}
-
-		// 设置其他连接参数
-		if charset, ok := cm["charset"].(string); ok {
-			config.Charset = charset
-		}
-
-		if sslmode, ok := cm["sslmode"].(string); ok {
-			config.SSLMode = sslmode
-		}
-
-		if timezone, ok := cm["timezone"].(string); ok {
-			config.TimeZone = timezone
-		}
-
-		// 设置默认值
-		config.MaxIdleConns = 10
-		config.MaxOpenConns = 100
-		config.ConnMaxLifetime = time.Hour
-
-		// 从配置中获取连接池设置
-		if maxIdle, ok := cm["max_idle_conns"].(int); ok {
-			config.MaxIdleConns = maxIdle
-		}
-
-		if maxOpen, ok := cm["max_open_conns"].(int); ok {
-			config.MaxOpenConns = maxOpen
-		}
-
+	// 直接检查是否为数据库配置
+	if _, hasConn := config["connections"]; hasConn {
+		log.Println("[DB] 使用嵌套格式的数据库配置")
 		return config, true
 	}
 
+	// 查找database配置部分
+	if db, ok := config["database"].(map[string]interface{}); ok {
+		log.Println("[DB] 找到database配置部分")
+		return db, true
+	}
+
+	log.Println("[DB] 使用平面配置格式")
 	return config, false
 }
 
-// extractDatabaseConfig 从各种类型的对象中提取数据库配置
-func extractDatabaseConfig(obj interface{}) (map[string]Config, bool) {
-	// 使用反射来尝试获取对象的数据库配置字段
-	// 这是一个简化版实现，实际可能需要更复杂的反射逻辑
-
-	// 尝试检查常见的配置对象方法
-	if configProvider, ok := obj.(interface{ GetDatabaseConfig() map[string]Config }); ok {
-		return configProvider.GetDatabaseConfig(), true
+// 从映射创建配置对象
+func createConfigFromMap(configMap interface{}) (Config, bool) {
+	m, ok := configMap.(map[string]interface{})
+	if !ok {
+		log.Println("[DB] 配置格式错误: 期待map[string]interface{}, 得到", reflect.TypeOf(configMap))
+		return Config{}, false
 	}
 
-	// 尝试通过Get方法获取数据库配置
-	if getter, ok := obj.(interface{ Get(string) interface{} }); ok {
-		if dbConfig := getter.Get("database"); dbConfig != nil {
-			if configMap, ok := dbConfig.(map[string]Config); ok {
-				return configMap, true
+	driver, ok := m["driver"].(string)
+	if !ok || driver == "" {
+		log.Println("[DB] 配置错误: 缺少driver字段或非字符串类型")
+		return Config{}, false
+	}
+
+	// 创建基本配置
+	config := Config{
+		Driver: driver,
+	}
+
+	// 设置主要连接参数
+	if host, ok := m["host"].(string); ok {
+		config.Host = host
+	}
+
+	if port, ok := m["port"].(int); ok {
+		config.Port = port
+	} else if portFloat, ok := m["port"].(float64); ok {
+		config.Port = int(portFloat)
+	}
+
+	if database, ok := m["database"].(string); ok {
+		config.Database = database
+	}
+
+	if username, ok := m["username"].(string); ok {
+		config.Username = username
+	}
+
+	if password, ok := m["password"].(string); ok {
+		config.Password = password
+	}
+
+	// 设置其他连接参数
+	if charset, ok := m["charset"].(string); ok {
+		config.Charset = charset
+	}
+
+	if sslmode, ok := m["sslmode"].(string); ok {
+		config.SSLMode = sslmode
+	}
+
+	if timezone, ok := m["timezone"].(string); ok {
+		config.TimeZone = timezone
+	}
+
+	// 设置连接池参数
+	if maxIdle, ok := m["max_idle_conns"].(int); ok {
+		config.MaxIdleConns = maxIdle
+	} else if maxIdleFloat, ok := m["max_idle_conns"].(float64); ok {
+		config.MaxIdleConns = int(maxIdleFloat)
+	}
+
+	if maxOpen, ok := m["max_open_conns"].(int); ok {
+		config.MaxOpenConns = maxOpen
+	} else if maxOpenFloat, ok := m["max_open_conns"].(float64); ok {
+		config.MaxOpenConns = int(maxOpenFloat)
+	}
+
+	if lifetime, ok := m["conn_max_lifetime"].(int); ok {
+		config.ConnMaxLifetime = time.Duration(lifetime) * time.Second
+	} else if lifetimeFloat, ok := m["conn_max_lifetime"].(float64); ok {
+		config.ConnMaxLifetime = time.Duration(lifetimeFloat) * time.Second
+	}
+
+	// 兼容DSN参数
+	if dsn, ok := m["dsn"].(string); ok && dsn != "" {
+		// 如果提供了DSN，使用它代替拆分的连接参数
+		// 这处理直接传递完整DSN的情况
+		switch driver {
+		case "mysql", "postgres", "sqlite3", "sqlserver":
+			log.Printf("[DB] 使用提供的DSN连接%s数据库\n", driver)
+		default:
+			log.Printf("[DB] 警告: 未知的数据库驱动 %s，可能不支持\n", driver)
+		}
+	} else {
+		// 如果没有提供DSN，则根据驱动类型构建DSN
+		switch driver {
+		case "mysql":
+			if config.Host != "" && config.Database != "" {
+				protocol := "tcp"
+				port := config.Port
+				if port == 0 {
+					port = 3306
+				}
+				charset := config.Charset
+				if charset == "" {
+					charset = "utf8mb4"
+				}
+				// 构建MySQL DSN
+				dsn := fmt.Sprintf("%s:%s@%s(%s:%d)/%s",
+					config.Username, config.Password, protocol, config.Host, port, config.Database)
+				if charset != "" {
+					dsn += "?charset=" + charset
+				}
+				log.Printf("[DB] 生成MySQL DSN: %s\n", maskDSN(dsn))
+			}
+		case "postgres":
+			if config.Host != "" {
+				// 构建PostgreSQL连接字符串
+				sslMode := config.SSLMode
+				if sslMode == "" {
+					sslMode = "disable"
+				}
+				port := config.Port
+				if port == 0 {
+					port = 5432
+				}
+				// 构建PostgreSQL DSN
+				dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+					config.Host, port, config.Username, config.Password, config.Database, sslMode)
+				log.Printf("[DB] 生成PostgreSQL DSN: %s\n", maskDSN(dsn))
+			}
+		case "sqlite3":
+			if config.Database != "" {
+				// 构建SQLite连接字符串
+				dsn := config.Database
+				log.Printf("[DB] 生成SQLite DSN: %s\n", dsn)
 			}
 		}
 	}
 
-	return nil, false
+	log.Printf("[DB] 成功创建数据库配置: driver=%s\n", config.Driver)
+	return config, true
+}
+
+// maskDSN 掩盖DSN中的敏感信息（如密码）
+func maskDSN(dsn string) string {
+	if dsn == "" {
+		return ""
+	}
+
+	// 处理MySQL格式的DSN (username:password@tcp(...))
+	mysqlRegex := regexp.MustCompile(`([^:@]+):([^@]+)@`)
+	maskedDsn := mysqlRegex.ReplaceAllString(dsn, "$1:********@")
+
+	// 处理键值对格式的DSN
+	passwordRegex := regexp.MustCompile(`(password)=([^;& ]+)`)
+	maskedDsn = passwordRegex.ReplaceAllString(maskedDsn, "$1=********")
+
+	return maskedDsn
+}
+
+// 从对象中提取数据库配置
+func extractDatabaseConfig(obj interface{}) (map[string]Config, bool) {
+	val := reflect.ValueOf(obj)
+
+	// 检查对象类型
+	if val.Kind() == reflect.Ptr {
+		val = val.Elem()
+	}
+
+	if val.Kind() != reflect.Struct {
+		return nil, false
+	}
+
+	typ := val.Type()
+	configs := make(map[string]Config)
+	found := false
+
+	// 查找所有标记了db标签的字段
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Field(i)
+		fieldType := typ.Field(i)
+
+		// 查找db标签
+		tag := fieldType.Tag.Get("db")
+		if tag == "" {
+			continue
+		}
+
+		// 检查字段是否为Config类型
+		if config, ok := field.Interface().(Config); ok {
+			configs[tag] = config
+			found = true
+			log.Printf("[DB] 从%s类型中提取到数据库配置: %s\n", typ.Name(), tag)
+		}
+	}
+
+	return configs, found
 }
 
 // DbProvider 数据库服务提供者(重命名以避免冲突)

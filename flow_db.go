@@ -59,9 +59,14 @@ func initDatabaseProvider() (interface{}, error) {
 func (e *Engine) WithDatabase(options ...interface{}) *Engine {
 	// 线程安全地更新选项
 	dbOptionsMutex.Lock()
-	// 创建新切片并正确复制
+	// 清空旧选项并创建新切片
 	databaseOptions = make([]interface{}, len(options))
-	copy(databaseOptions, options) // 正确的复制顺序
+	// 逐项复制选项
+	for i, opt := range options {
+		databaseOptions[i] = opt
+	}
+	// 同时更新db包中的选项
+	db.SetDatabaseOptions(databaseOptions)
 	dbOptionsMutex.Unlock()
 
 	// 添加数据库初始化提供者
