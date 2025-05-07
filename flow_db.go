@@ -62,9 +62,7 @@ func (e *Engine) WithDatabase(options ...interface{}) *Engine {
 	// 清空旧选项并创建新切片
 	databaseOptions = make([]interface{}, len(options))
 	// 逐项复制选项
-	for i, opt := range options {
-		databaseOptions[i] = opt
-	}
+	copy(databaseOptions, options)
 	// 同时更新db包中的选项
 	db.SetDatabaseOptions(databaseOptions)
 	dbOptionsMutex.Unlock()

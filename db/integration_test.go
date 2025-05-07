@@ -9,7 +9,7 @@ import (
 
 // TestIntegrationExample 集成测试示例
 // 这不是实际执行的测试，只是展示如何使用数据库模块
-func ExampleDatabaseIntegration() {
+func Example() {
 	// 跳过数据库连接，这只是示例
 	skipDatabaseConnection = true
 

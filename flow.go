@@ -387,18 +387,6 @@ func New(options ...Option) *Engine {
 	return engineInstance
 }
 
-// mapGinMode 将Flow模式映射到Gin模式
-func mapGinMode(mode string) string {
-	switch strings.ToLower(mode) {
-	case "release":
-		return gin.ReleaseMode
-	case "test":
-		return gin.TestMode
-	default:
-		return gin.DebugMode
-	}
-}
-
 // NewContext 创建Flow上下文
 func (e *Engine) NewContext(c *gin.Context) *Context {
 	return &Context{
