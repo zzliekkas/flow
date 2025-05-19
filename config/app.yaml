@@ -71,3 +71,13 @@ cache:
     memory:
       driver: "memory"
       size: 10000 
+
+# 快递100配置
+kd100:
+  key: "your_kuaidi100_api_key"
+  customer: "your_kuaidi100_customer_code"
+  secret: "your_kuaidi100_secret"
+  baseUrl: "https://poll.kuaidi100.com"
+  salt: "your_salt_string"
+  notifyUrl: "https://yourdomain.com/api/express/callback"
+  timeout: 10 # 秒 

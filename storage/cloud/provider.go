@@ -155,6 +155,8 @@ func ResolveCloudDriver(ctx context.Context, driverType string, config map[strin
 		return createCOSDriver(config)
 	case "gcs":
 		return createGCSDriver(config)
+	case "qiniu":
+		return createQiniuDriver(config)
 	default:
 		return nil, fmt.Errorf("cloud: 不支持的驱动类型 '%s'", driverType)
 	}
@@ -230,6 +232,22 @@ func createGCSDriver(config map[string]interface{}) (core.FileSystem, error) {
 	return nil, errors.New("cloud: GCS驱动尚未实现")
 }
 
+// 创建Qiniu驱动
+func createQiniuDriver(config map[string]interface{}) (core.FileSystem, error) {
+	cfg := QiniuConfig{
+		AccessKey: getStringValue(config, "access_key", ""),
+		SecretKey: getStringValue(config, "secret_key", ""),
+		Bucket:    getStringValue(config, "bucket", ""),
+		Domain:    getStringValue(config, "domain", ""),
+	}
+	fs, err := NewQiniu(cfg)
+	if err != nil {
+		return nil, err
+	}
+	// 用适配器包裹，兼容core.FileSystem接口
+	return &storage.StorageToCoreFSAdapter{StorageFS: fs}, nil
+}
+
 // 辅助函数：从配置映射获取字符串值
 func getStringValue(config map[string]interface{}, key, defaultValue string) string {
 	if val, ok := config[key]; ok {
@@ -248,4 +266,8 @@ func getBoolValue(config map[string]interface{}, key string, defaultValue bool) 
 		}
 	}
 	return defaultValue
+}
+
+func (fs *QiniuFileSystem) AllDirectories(ctx context.Context, directory string) ([]string, error) {
+	return nil, nil
 }
