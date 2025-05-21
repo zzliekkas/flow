@@ -15,7 +15,7 @@ const (
 )
 
 // NewStorageProvider 创建存储提供商实例
-func NewStorageProvider(cfg *config.Config) (storage.Provider, error) {
+func NewStorageProvider(cfg *config.ConfigManager) (storage.Provider, error) {
 	provider := cfg.GetString("cloud.provider")
 
 	var providerType storage.ProviderType

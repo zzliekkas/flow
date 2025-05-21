@@ -5,7 +5,6 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -663,13 +662,4 @@ func (s *FileStore) startGC() {
 			s.Flush(context.Background())
 		}
 	}()
-}
-
-// 检查文件修改时间是否超过过期时间
-func isFileExpired(fileInfo fs.FileInfo, expiration int64) bool {
-	if expiration <= 0 {
-		return false
-	}
-	// 使用文件的修改时间与过期时间比较
-	return fileInfo.ModTime().UnixNano()+expiration < time.Now().UnixNano()
 }

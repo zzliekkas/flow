@@ -95,7 +95,7 @@ func WithConfig(configPath string) Option {
 			// 记录错误但不中断
 			fmt.Printf("加载配置文件失败: %v\n", err)
 			// 创建一个空的配置管理器继续使用
-			configManager = config.NewConfig()
+			configManager = config.NewConfigManager()
 			configManager.Set("app.name", "flow")
 			configManager.Set("app.version", Version)
 			configManager.Set("app.mode", e.config.Mode)
@@ -103,12 +103,12 @@ func WithConfig(configPath string) Option {
 		}
 
 		// 注册到依赖注入容器
-		e.Provide(func() *config.Config {
+		e.Provide(func() *config.ConfigManager {
 			return configManager
 		})
 
 		// 为兼容性提供Manager类型别名
-		e.Provide(func(cfg *config.Config) *config.Manager {
+		e.Provide(func(cfg *config.ConfigManager) *config.ConfigManager {
 			return cfg
 		})
 
@@ -118,7 +118,7 @@ func WithConfig(configPath string) Option {
 }
 
 // loadConfig 加载配置文件
-func loadConfig(configPath string) (*config.Config, error) {
+func loadConfig(configPath string) (*config.ConfigManager, error) {
 	// 判断是文件路径还是目录
 	fi, err := os.Stat(configPath)
 
@@ -135,7 +135,7 @@ func loadConfig(configPath string) (*config.Config, error) {
 	}
 
 	// 创建配置实例
-	cfg := config.NewConfig(
+	cfg := config.NewConfigManager(
 		config.WithConfigPath(dirPath),
 		config.WithConfigName(configName),
 	)
@@ -163,7 +163,7 @@ func loadConfig(configPath string) (*config.Config, error) {
 }
 
 // applyConfigToEngine 将配置应用到引擎
-func applyConfigToEngine(e *Engine, cfg *config.Config) {
+func applyConfigToEngine(e *Engine, cfg *config.ConfigManager) {
 	if cfg == nil {
 		// 如果配置为nil，不做任何操作
 		fmt.Println("警告: 配置为空，跳过应用配置到引擎")
@@ -322,7 +322,7 @@ func WithServiceProvider(constructor interface{}) Option {
 func WithConfigWatcher(callback func()) Option {
 	return func(e *Engine) {
 		// 检查是否有配置管理器
-		e.Invoke(func(cfg *config.Config) {
+		e.Invoke(func(cfg *config.ConfigManager) {
 			// 注册配置变更回调
 			cfg.OnChange(callback)
 		})
@@ -667,15 +667,15 @@ func (c *Context) UintParam(value string) (uint, error) {
 }
 
 // Config 获取配置实例
-func (c *Context) Config() *config.Config {
-	var cfg *config.Config
-	err := c.engine.Invoke(func(c *config.Config) {
+func (c *Context) Config() *config.ConfigManager {
+	var cfg *config.ConfigManager
+	err := c.engine.Invoke(func(c *config.ConfigManager) {
 		cfg = c
 	})
 
 	if err != nil || cfg == nil {
 		// 如果没有注册配置，返回一个具备安全默认值的空配置
-		cfg = config.NewConfig()
+		cfg = config.NewConfigManager()
 		// 手动初始化 viper，确保不会发生空指针异常
 		cfg.Set("app.name", "flow")
 		cfg.Set("app.version", Version)

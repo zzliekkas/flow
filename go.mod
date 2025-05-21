@@ -21,13 +21,17 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.22
+	github.com/plutov/paypal/v4 v4.7.0
 	github.com/qiniu/go-sdk/v7 v7.25.3
 	github.com/redis/go-redis/v9 v9.7.3
 	github.com/sirupsen/logrus v1.9.3
+	github.com/smartwalle/alipay/v3 v3.2.20
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.10.0
+	github.com/stripe/stripe-go/v74 v74.30.0
 	github.com/tencentyun/cos-go-sdk-v5 v0.7.65
+	github.com/wechatpay-apiv3/wechatpay-go v0.2.20
 	go.opentelemetry.io/otel v1.35.0
 	go.opentelemetry.io/otel/exporters/jaeger v1.17.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.35.0
@@ -56,6 +60,9 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/mozillazg/go-httpheader v0.4.0 // indirect
+	github.com/smartwalle/ncrypto v1.0.4 // indirect
+	github.com/smartwalle/ngx v1.0.9 // indirect
+	github.com/smartwalle/nsign v1.0.9 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/otel/metric v1.35.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.5.0 // indirect

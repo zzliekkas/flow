@@ -177,11 +177,6 @@ func (r *RedisStore) prefixKey(key string) string {
 	return r.prefix + key
 }
 
-// tagKey 为标签键添加前缀
-func (r *RedisStore) tagKey(tag string) string {
-	return r.prefix + "tag:" + tag
-}
-
 // Get 从缓存中获取一个项目
 func (r *RedisStore) Get(ctx context.Context, key string) (interface{}, error) {
 	prefixedKey := r.prefixKey(key)

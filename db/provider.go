@@ -27,7 +27,7 @@ func NewDatabaseProvider(container *di.Container) *DatabaseProvider {
 // Register 注册数据库服务
 func (p *DatabaseProvider) Register(app interface{}) error {
 	// 注册数据库连接管理器
-	err := p.container.Provide(func(configManager *config.Manager) (*Manager, error) {
+	err := p.container.Provide(func(configManager *config.ConfigManager) (*Manager, error) {
 		manager := NewManager()
 
 		// 从配置中加载数据库配置

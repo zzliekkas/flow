@@ -15,43 +15,29 @@ import (
 
 var (
 	// 全局配置实例
-	defaultConfig *Config
+	defaultConfig *ConfigManager
 	once          sync.Once
 )
 
-// Config 表示配置管理器
-type Config struct {
-	// viper实例
-	viper *viper.Viper
+// ConfigManager 表示配置管理器
 
-	// 配置文件路径
-	configPath string
-
-	// 配置文件名
-	configName string
-
-	// 配置文件类型
-	configType string
-
-	// 环境
-	env string
-
-	// 是否已加载
-	loaded bool
-
-	// 锁
-	mu sync.RWMutex
-
-	// 配置更改回调
+type ConfigManager struct {
+	viper             *viper.Viper
+	configPath        string
+	configName        string
+	configType        string
+	env               string
+	loaded            bool
+	mu                sync.RWMutex
 	onChangeCallbacks []func()
 }
 
 // 配置选项函数
-type ConfigOption func(*Config)
+type ConfigOption func(*ConfigManager)
 
-// NewConfig 创建一个新的配置管理器
-func NewConfig(options ...ConfigOption) *Config {
-	cfg := &Config{
+// NewConfigManager 创建一个新的配置管理器
+func NewConfigManager(options ...ConfigOption) *ConfigManager {
+	cfg := &ConfigManager{
 		viper:      viper.New(),
 		configPath: "./config",
 		configName: "config",
@@ -69,34 +55,34 @@ func NewConfig(options ...ConfigOption) *Config {
 
 // WithConfigPath 设置配置文件路径
 func WithConfigPath(path string) ConfigOption {
-	return func(c *Config) {
+	return func(c *ConfigManager) {
 		c.configPath = path
 	}
 }
 
 // WithConfigName 设置配置文件名
 func WithConfigName(name string) ConfigOption {
-	return func(c *Config) {
+	return func(c *ConfigManager) {
 		c.configName = name
 	}
 }
 
 // WithConfigType 设置配置文件类型
 func WithConfigType(configType string) ConfigOption {
-	return func(c *Config) {
+	return func(c *ConfigManager) {
 		c.configType = configType
 	}
 }
 
 // WithEnvironment 设置环境
 func WithEnvironment(env string) ConfigOption {
-	return func(c *Config) {
+	return func(c *ConfigManager) {
 		c.env = env
 	}
 }
 
 // Load 加载配置文件
-func (c *Config) Load() error {
+func (c *ConfigManager) Load() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -213,7 +199,7 @@ app:
 }
 
 // checkAndFixConfigFile 检查并修复配置文件
-func (c *Config) checkAndFixConfigFile(filePath string) error {
+func (c *ConfigManager) checkAndFixConfigFile(filePath string) error {
 	// 检查文件是否存在
 	info, err := os.Stat(filePath)
 	if err != nil {
@@ -253,7 +239,7 @@ func (c *Config) checkAndFixConfigFile(filePath string) error {
 }
 
 // fixConfigFile 修复配置文件
-func (c *Config) fixConfigFile(filePath string) error {
+func (c *ConfigManager) fixConfigFile(filePath string) error {
 	// 检查文件是否存在
 	if _, err := os.Stat(filePath); err != nil {
 		return err
@@ -302,7 +288,7 @@ func copyFile(src, dst string) error {
 }
 
 // setupConfigWatch 设置配置文件变更监听
-func (c *Config) setupConfigWatch() {
+func (c *ConfigManager) setupConfigWatch() {
 	c.viper.WatchConfig()
 	c.viper.OnConfigChange(func(e fsnotify.Event) {
 		c.mu.Lock()
@@ -314,14 +300,14 @@ func (c *Config) setupConfigWatch() {
 }
 
 // OnChange 设置配置变更回调
-func (c *Config) OnChange(callback func()) {
+func (c *ConfigManager) OnChange(callback func()) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.onChangeCallbacks = append(c.onChangeCallbacks, callback)
 }
 
 // Get 获取指定键的配置值
-func (c *Config) Get(key string) interface{} {
+func (c *ConfigManager) Get(key string) interface{} {
 	if c.viper == nil {
 		return nil
 	}
@@ -329,7 +315,7 @@ func (c *Config) Get(key string) interface{} {
 }
 
 // GetString 获取字符串配置值
-func (c *Config) GetString(key string) string {
+func (c *ConfigManager) GetString(key string) string {
 	if c.viper == nil {
 		return ""
 	}
@@ -337,7 +323,7 @@ func (c *Config) GetString(key string) string {
 }
 
 // GetInt 获取整数配置值
-func (c *Config) GetInt(key string) int {
+func (c *ConfigManager) GetInt(key string) int {
 	if c.viper == nil {
 		return 0
 	}
@@ -345,7 +331,7 @@ func (c *Config) GetInt(key string) int {
 }
 
 // GetBool 获取布尔配置值
-func (c *Config) GetBool(key string) bool {
+func (c *ConfigManager) GetBool(key string) bool {
 	if c.viper == nil {
 		return false
 	}
@@ -353,7 +339,7 @@ func (c *Config) GetBool(key string) bool {
 }
 
 // GetFloat64 获取浮点数配置值
-func (c *Config) GetFloat64(key string) float64 {
+func (c *ConfigManager) GetFloat64(key string) float64 {
 	if c.viper == nil {
 		return 0
 	}
@@ -361,7 +347,7 @@ func (c *Config) GetFloat64(key string) float64 {
 }
 
 // GetTime 获取时间配置值
-func (c *Config) GetTime(key string) time.Time {
+func (c *ConfigManager) GetTime(key string) time.Time {
 	if c.viper == nil {
 		return time.Time{}
 	}
@@ -369,7 +355,7 @@ func (c *Config) GetTime(key string) time.Time {
 }
 
 // GetDuration 获取时间间隔配置值
-func (c *Config) GetDuration(key string) time.Duration {
+func (c *ConfigManager) GetDuration(key string) time.Duration {
 	if c.viper == nil {
 		return 0
 	}
@@ -377,7 +363,7 @@ func (c *Config) GetDuration(key string) time.Duration {
 }
 
 // GetStringSlice 获取字符串切片配置值
-func (c *Config) GetStringSlice(key string) []string {
+func (c *ConfigManager) GetStringSlice(key string) []string {
 	if c.viper == nil {
 		return []string{}
 	}
@@ -385,7 +371,7 @@ func (c *Config) GetStringSlice(key string) []string {
 }
 
 // GetStringMap 获取字符串映射配置值
-func (c *Config) GetStringMap(key string) map[string]interface{} {
+func (c *ConfigManager) GetStringMap(key string) map[string]interface{} {
 	if c.viper == nil {
 		return map[string]interface{}{}
 	}
@@ -393,7 +379,7 @@ func (c *Config) GetStringMap(key string) map[string]interface{} {
 }
 
 // GetStringMapString 获取字符串映射字符串配置值
-func (c *Config) GetStringMapString(key string) map[string]string {
+func (c *ConfigManager) GetStringMapString(key string) map[string]string {
 	if c.viper == nil {
 		return map[string]string{}
 	}
@@ -401,7 +387,7 @@ func (c *Config) GetStringMapString(key string) map[string]string {
 }
 
 // Unmarshal 将配置解析到结构体
-func (c *Config) Unmarshal(key string, rawVal interface{}) error {
+func (c *ConfigManager) Unmarshal(key string, rawVal interface{}) error {
 	if c.viper == nil {
 		return fmt.Errorf("配置未初始化")
 	}
@@ -409,7 +395,7 @@ func (c *Config) Unmarshal(key string, rawVal interface{}) error {
 }
 
 // UnmarshalWithOptions 将配置解析到结构体，支持额外选项
-func (c *Config) UnmarshalWithOptions(key string, rawVal interface{}, opts ...viper.DecoderConfigOption) error {
+func (c *ConfigManager) UnmarshalWithOptions(key string, rawVal interface{}, opts ...viper.DecoderConfigOption) error {
 	if c.viper == nil {
 		return fmt.Errorf("配置未初始化")
 	}
@@ -417,7 +403,7 @@ func (c *Config) UnmarshalWithOptions(key string, rawVal interface{}, opts ...vi
 }
 
 // Set 设置配置值
-func (c *Config) Set(key string, value interface{}) {
+func (c *ConfigManager) Set(key string, value interface{}) {
 	if c.viper == nil {
 		c.viper = viper.New()
 	}
@@ -425,7 +411,7 @@ func (c *Config) Set(key string, value interface{}) {
 }
 
 // Has 检查是否存在指定键
-func (c *Config) Has(key string) bool {
+func (c *ConfigManager) Has(key string) bool {
 	if c.viper == nil {
 		return false
 	}
@@ -433,7 +419,7 @@ func (c *Config) Has(key string) bool {
 }
 
 // AllSettings 获取所有配置
-func (c *Config) AllSettings() map[string]interface{} {
+func (c *ConfigManager) AllSettings() map[string]interface{} {
 	if c.viper == nil {
 		return map[string]interface{}{}
 	}
@@ -441,13 +427,13 @@ func (c *Config) AllSettings() map[string]interface{} {
 }
 
 // Sub 获取子配置
-func (c *Config) Sub(key string) *Config {
+func (c *ConfigManager) Sub(key string) *ConfigManager {
 	subViper := c.viper.Sub(key)
 	if subViper == nil {
 		return nil
 	}
 
-	return &Config{
+	return &ConfigManager{
 		viper:      subViper,
 		configPath: c.configPath,
 		configName: c.configName,
@@ -458,7 +444,7 @@ func (c *Config) Sub(key string) *Config {
 }
 
 // IsLoaded 检查配置是否已加载
-func (c *Config) IsLoaded() bool {
+func (c *ConfigManager) IsLoaded() bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.loaded
@@ -467,7 +453,7 @@ func (c *Config) IsLoaded() bool {
 // Load 加载全局配置
 func Load(path string) error {
 	once.Do(func() {
-		defaultConfig = NewConfig(WithConfigPath(path))
+		defaultConfig = NewConfigManager(WithConfigPath(path))
 	})
 	return defaultConfig.Load()
 }
@@ -563,7 +549,7 @@ func UnmarshalWithOptions(key string, rawVal interface{}, opts ...viper.DecoderC
 }
 
 // Sub 获取全局配置的子配置
-func Sub(key string) *Config {
+func Sub(key string) *ConfigManager {
 	ensureLoaded()
 	return defaultConfig.Sub(key)
 }
@@ -578,7 +564,7 @@ func AllSettings() map[string]interface{} {
 func ensureLoaded() {
 	if defaultConfig == nil {
 		// 如果全局配置为nil，创建一个默认配置而不是抛出panic
-		defaultConfig = NewConfig()
+		defaultConfig = NewConfigManager()
 		// 设置一些默认值
 		defaultConfig.Set("app.name", "flow")
 		defaultConfig.Set("app.version", "1.0.0")

@@ -407,7 +407,7 @@ func (m *Manager) checkHealth(name string, config Config) bool {
 }
 
 // FromConfig 从配置管理器加载数据库配置
-func (m *Manager) FromConfig(configManager *config.Manager) error {
+func (m *Manager) FromConfig(configManager *config.ConfigManager) error {
 	// 先尝试新的嵌套配置格式
 	if configManager.Get("database") != nil {
 		return m.fromNestedConfig(configManager)
@@ -418,7 +418,7 @@ func (m *Manager) FromConfig(configManager *config.Manager) error {
 }
 
 // fromNestedConfig 从嵌套配置加载数据库设置
-func (m *Manager) fromNestedConfig(configManager *config.Manager) error {
+func (m *Manager) fromNestedConfig(configManager *config.ConfigManager) error {
 	// 获取默认连接名称
 	defaultConn := configManager.GetString("database.default")
 	if defaultConn != "" {
@@ -476,7 +476,7 @@ func (m *Manager) fromNestedConfig(configManager *config.Manager) error {
 }
 
 // fromFlatConfig 从平铺配置加载数据库设置 (旧版格式)
-func (m *Manager) fromFlatConfig(configManager *config.Manager) error {
+func (m *Manager) fromFlatConfig(configManager *config.ConfigManager) error {
 	// 旧版平铺配置加载逻辑
 	driver := configManager.GetString("database.driver")
 	if driver == "" {

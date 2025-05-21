@@ -45,7 +45,7 @@ func testManualConfig(configPath string) {
 	defer db.SetTestMode(false)
 
 	// 使用config包加载配置
-	cfg := config.NewConfig(
+	cfg := config.NewConfigManager(
 		config.WithConfigPath(filepath.Dir(configPath)),
 		config.WithConfigName(strings.TrimSuffix(filepath.Base(configPath), filepath.Ext(configPath))),
 	)

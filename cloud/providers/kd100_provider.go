@@ -22,8 +22,8 @@ func (p *Kd100Provider) Register(application interface{}) error {
 	// 读取配置
 	var cfg config.Kd100Config
 	if err := engine.(interface {
-		Invoke(func(*config.Config)) error
-	}).Invoke(func(c *config.Config) {
+		Invoke(func(*config.ConfigManager)) error
+	}).Invoke(func(c *config.ConfigManager) {
 		_ = c.Unmarshal("kd100", &cfg)
 	}); err != nil {
 		return err

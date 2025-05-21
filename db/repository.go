@@ -97,7 +97,7 @@ func (r *BaseRepository) newModel() interface{} {
 }
 
 // newSlice 创建一个新的模型切片
-func (r *BaseRepository) newSlice() interface{} {
+func (r *BaseRepository) newSlice() any {
 	sliceType := reflect.SliceOf(reflect.PtrTo(r.modelType))
 	return reflect.New(sliceType).Interface()
 }

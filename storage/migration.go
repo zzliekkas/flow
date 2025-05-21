@@ -112,7 +112,6 @@ func (m *Migrator) Migrate(ctx context.Context, sourceDisk, targetDisk string, s
 
 	// 收集要处理的文件
 	var filesToProcess []string
-	var collectErr error
 
 	if options.Recursive {
 		files, err := source.AllFiles(ctx, sourceDirectory)
@@ -140,10 +139,6 @@ func (m *Migrator) Migrate(ctx context.Context, sourceDisk, targetDisk string, s
 				filesToProcess = append(filesToProcess, path)
 			}
 		}
-	}
-
-	if collectErr != nil && !options.ContinueOnError {
-		return nil, collectErr
 	}
 
 	// 设置进度信息
@@ -302,7 +297,6 @@ func (m *Migrator) Sync(ctx context.Context, sourceDisk, targetDisk string, dire
 	// 收集要处理的文件
 	var filesToProcess []string
 	var sourceFiles []File
-	var collectErr error
 
 	if options.Recursive {
 		sourceFiles, err = source.AllFiles(ctx, directory)
@@ -338,7 +332,7 @@ func (m *Migrator) Sync(ctx context.Context, sourceDisk, targetDisk string, dire
 			}
 
 			// 检查文件是否需要更新
-			needsUpdate, err := m.needsUpdate(ctx, source, target, path, targetPath, file)
+			needsUpdate, err := m.needsUpdate(ctx, target, path, targetPath, file)
 			if err != nil {
 				if !options.ContinueOnError {
 					result.Failures[path] = err
@@ -351,10 +345,6 @@ func (m *Migrator) Sync(ctx context.Context, sourceDisk, targetDisk string, dire
 				filesToProcess = append(filesToProcess, path)
 			}
 		}
-	}
-
-	if collectErr != nil && !options.ContinueOnError {
-		return nil, collectErr
 	}
 
 	// 执行迁移
@@ -375,7 +365,7 @@ func (m *Migrator) Sync(ctx context.Context, sourceDisk, targetDisk string, dire
 }
 
 // needsUpdate 检查文件是否需要更新
-func (m *Migrator) needsUpdate(ctx context.Context, source, target FileSystem, sourcePath, targetPath string, sourceFile File) (bool, error) {
+func (m *Migrator) needsUpdate(ctx context.Context, target FileSystem, sourcePath, targetPath string, sourceFile File) (bool, error) {
 	// 检查目标文件是否存在
 	exists, err := target.Exists(ctx, targetPath)
 	if err != nil {
@@ -442,7 +432,6 @@ func (m *Migrator) BatchCopy(ctx context.Context, disk string, sourceDirectory, 
 
 	// 收集要处理的文件
 	var filesToProcess []string
-	var collectErr error
 
 	if options.Recursive {
 		files, err := fs.AllFiles(ctx, sourceDirectory)
@@ -470,10 +459,6 @@ func (m *Migrator) BatchCopy(ctx context.Context, disk string, sourceDirectory, 
 				filesToProcess = append(filesToProcess, path)
 			}
 		}
-	}
-
-	if collectErr != nil && !options.ContinueOnError {
-		return nil, collectErr
 	}
 
 	// 设置进度信息
@@ -603,7 +588,6 @@ func (m *Migrator) BatchMove(ctx context.Context, disk string, sourceDirectory, 
 
 	// 收集要处理的文件
 	var filesToProcess []string
-	var collectErr error
 
 	if options.Recursive {
 		files, err := fs.AllFiles(ctx, sourceDirectory)
@@ -631,10 +615,6 @@ func (m *Migrator) BatchMove(ctx context.Context, disk string, sourceDirectory, 
 				filesToProcess = append(filesToProcess, path)
 			}
 		}
-	}
-
-	if collectErr != nil && !options.ContinueOnError {
-		return nil, collectErr
 	}
 
 	// 设置进度信息

@@ -54,7 +54,7 @@ log:
 
 	// 方法1: 直接使用config包加载配置
 	fmt.Println("\n方法1: 使用config包直接加载")
-	cfg := config.NewConfig(
+	cfg := config.NewConfigManager(
 		config.WithConfigPath(configDir),
 		config.WithConfigName("app"),
 	)
@@ -75,7 +75,7 @@ log:
 	)
 
 	// 使用配置
-	app.Invoke(func(cfg *config.Config) {
+	app.Invoke(func(cfg *config.ConfigManager) {
 		fmt.Printf("应用名称: %s\n", cfg.GetString("app.name"))
 		fmt.Printf("应用版本: %s\n", cfg.GetString("app.version"))
 		fmt.Printf("服务器端口: %d\n", cfg.GetInt("server.port"))

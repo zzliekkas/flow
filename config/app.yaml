@@ -81,3 +81,26 @@ kd100:
   salt: "your_salt_string"
   notifyUrl: "https://yourdomain.com/api/express/callback"
   timeout: 10 # 秒 
+
+# Stripe 支付配置
+stripe:
+  api_key: "sk_test_xxx"
+  webhook_secret: "whsec_xxx" 
+
+# PayPal 支付配置
+paypal:
+  client_id: "your_paypal_client_id"
+  client_secret: "your_paypal_client_secret"
+
+# 支付宝支付配置
+alipay:
+  app_id: "your_alipay_app_id"
+  private_key: "your_alipay_private_key"
+  public_key: "your_alipay_public_key"
+
+# 微信支付配置
+wechatpay:
+  mch_id: "your_wechatpay_mch_id"
+  api_key: "your_wechatpay_api_key"
+  cert_path: "your_wechatpay_cert_path"
+  key_path: "your_wechatpay_key_path" 

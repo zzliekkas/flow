@@ -61,8 +61,8 @@ func (p *CacheProvider) Boot(application *app.Application) error {
 
 // 加载缓存配置
 func (p *CacheProvider) loadCacheConfig(application *app.Application, manager *Manager) {
-	var configManager *config.Manager
-	if err := application.Engine().Invoke(func(cm *config.Manager) {
+	var configManager *config.ConfigManager
+	if err := application.Engine().Invoke(func(cm *config.ConfigManager) {
 		configManager = cm
 	}); err != nil || configManager == nil {
 		// 配置管理器不可用，使用默认配置
