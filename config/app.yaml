@@ -104,3 +104,8 @@ wechatpay:
   api_key: "your_wechatpay_api_key"
   cert_path: "your_wechatpay_cert_path"
   key_path: "your_wechatpay_key_path" 
+
+twilio:
+  account_sid: "your_account_sid"
+  auth_token: "your_auth_token"
+  from_number: "+1234567890"
