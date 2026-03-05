@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	// 确保在导入gin之前设置好gin模式
 	_ "github.com/zzliekkas/flow/v2/ginmode"
@@ -37,7 +38,11 @@ const (
 )
 
 // defaultEngine 全局默认引擎实例（可选，用于向后兼容）
-var defaultEngine *Engine
+var (
+	defaultEngine   *Engine
+	defaultEngineMu sync.Mutex
+	defaultOnce     sync.Once
+)
 
 // H is a shortcut for map[string]interface{}
 type H map[string]interface{}
@@ -49,6 +54,10 @@ type Engine struct {
 	config        *Config
 	server        *http.Server // HTTP服务器实例，用于优雅关闭
 	dbInitialized bool         // 数据库是否已初始化
+
+	// 数据库选项存储 - 每个Engine实例独立
+	databaseOptions []interface{}
+	dbOptionsMutex  sync.Mutex
 
 	// 生命周期钩子
 	startHooks    []hook // 启动钩子（Run之前执行）
@@ -96,11 +105,6 @@ func WithConfig(configPath string) Option {
 		// 注册到依赖注入容器
 		e.Provide(func() *config.ConfigManager {
 			return configManager
-		})
-
-		// 为兼容性提供Manager类型别名
-		e.Provide(func(cfg *config.ConfigManager) *config.ConfigManager {
-			return cfg
 		})
 
 		// 应用配置到框架
@@ -225,19 +229,25 @@ func WithLogLevel(level string) Option {
 
 // configureLogLevel 配置日志级别
 func configureLogLevel(level string) {
-	// 依据级别配置日志
+	// 尝试将全局日志实例转换为 defaultLogger 以设置级别
+	dl, ok := frameworkLogger.(*defaultLogger)
+	if !ok {
+		return
+	}
+
 	switch strings.ToLower(level) {
 	case "debug":
-		flog.Debug("日志级别设置为: DEBUG")
+		dl.SetLevel(LogLevelDebug)
 	case "info":
-		flog.Debug("日志级别设置为: INFO")
+		dl.SetLevel(LogLevelInfo)
 	case "warn", "warning":
-		flog.Debug("日志级别设置为: WARN")
+		dl.SetLevel(LogLevelWarn)
 	case "error":
-		flog.Debug("日志级别设置为: ERROR")
+		dl.SetLevel(LogLevelError)
 	default:
-		flog.Debug("未知日志级别，使用默认: INFO")
+		dl.SetLevel(LogLevelInfo)
 	}
+	flog.Debug("日志级别设置为: ", strings.ToUpper(level))
 }
 
 // WithDatabase 返回一个配置数据库的选项
@@ -339,9 +349,11 @@ func New(options ...Option) *Engine {
 	}
 
 	// 设置为默认引擎（首次创建的实例）
+	defaultEngineMu.Lock()
 	if defaultEngine == nil {
 		defaultEngine = e
 	}
+	defaultEngineMu.Unlock()
 
 	return e
 }
@@ -349,9 +361,13 @@ func New(options ...Option) *Engine {
 // Default 返回默认的全局引擎实例
 // 如果尚未创建，会自动创建一个默认配置的实例
 func Default() *Engine {
-	if defaultEngine == nil {
-		defaultEngine = New()
-	}
+	defaultOnce.Do(func() {
+		defaultEngineMu.Lock()
+		if defaultEngine == nil {
+			defaultEngine = New()
+		}
+		defaultEngineMu.Unlock()
+	})
 	return defaultEngine
 }
 

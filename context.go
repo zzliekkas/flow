@@ -16,10 +16,10 @@ type Context struct {
 }
 
 // Inject 向上下文注入依赖
-func (c *Context) Inject(target interface{}) error {
-	return c.engine.Invoke(func(injected interface{}) {
-		*target.(*interface{}) = injected
-	})
+// 注意: target 必须是指向具体类型指针的指针，例如 var svc *MyService; c.Inject(&svc)
+// 内部通过 dig 容器解析具体类型
+func (c *Context) Inject(function interface{}) error {
+	return c.engine.Invoke(function)
 }
 
 // DB 获取数据库连接
@@ -38,11 +38,10 @@ func (c *Context) DB() *gorm.DB {
 }
 
 // Cache 获取缓存实例
-// 这是一个便捷方法，用于从上下文中获取缓存实例
+// 用户应在 Engine.Provide 中注册具体缓存类型，然后通过 Inject 获取
 func (c *Context) Cache() interface{} {
-	var cache interface{}
-	c.Inject(&cache)
-	return cache
+	v, _ := c.Get("cache")
+	return v
 }
 
 // QueryInt 获取查询参数并转换为整数，如果不存在或转换失败则返回默认值
@@ -135,19 +134,17 @@ func (c *Context) ConfigString(key string, defaultValue string) string {
 // ConfigInt 获取整数配置值
 func (c *Context) ConfigInt(key string, defaultValue int) int {
 	cfg := c.Config()
-	if cfg == nil {
+	if cfg == nil || !cfg.Has(key) {
 		return defaultValue
 	}
-
 	return cfg.GetInt(key)
 }
 
 // ConfigBool 获取布尔配置值
 func (c *Context) ConfigBool(key string, defaultValue bool) bool {
 	cfg := c.Config()
-	if cfg == nil {
+	if cfg == nil || !cfg.Has(key) {
 		return defaultValue
 	}
-
 	return cfg.GetBool(key)
 }

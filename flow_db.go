@@ -2,32 +2,25 @@ package flow
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/zzliekkas/flow/v2/db"
-)
-
-// 数据库选项存储 - 使用互斥锁保护
-var (
-	databaseOptions []interface{}
-	dbOptionsMutex  sync.Mutex
 )
 
 // WithDatabase 配置数据库连接
 // 传入各种配置选项，如直接的Config、ConnectionOption函数或配置结构
 func (e *Engine) WithDatabase(options ...interface{}) *Engine {
-	// 线程安全地存储选项
-	dbOptionsMutex.Lock()
-	databaseOptions = make([]interface{}, len(options))
-	copy(databaseOptions, options)
-	dbOptionsMutex.Unlock()
+	// 线程安全地存储选项到Engine实例
+	e.dbOptionsMutex.Lock()
+	e.databaseOptions = make([]interface{}, len(options))
+	copy(e.databaseOptions, options)
+	e.dbOptionsMutex.Unlock()
 
 	// 直接调用 db.InitializeDatabase 初始化数据库
 	e.Provide(func() (*db.DbProvider, error) {
-		dbOptionsMutex.Lock()
-		opts := make([]interface{}, len(databaseOptions))
-		copy(opts, databaseOptions)
-		dbOptionsMutex.Unlock()
+		e.dbOptionsMutex.Lock()
+		opts := make([]interface{}, len(e.databaseOptions))
+		copy(opts, e.databaseOptions)
+		e.dbOptionsMutex.Unlock()
 
 		result, err := db.InitializeDatabase(opts)
 		if err != nil {
