@@ -16,15 +16,17 @@
 | `i18n/` | 国际化 | — |
 | `error.go` | 错误处理 | — |
 
-## 可选模块（Optional — 计划在 v2.1 拆为独立模块）
-以下包是可选扩展，引入了较重的第三方依赖。将在 v2.1 版本中拆分为独立 Go 模块：
+## 可选模块（已拆为独立 Go 模块，v0.1.0+）
+以下包已提取为独立仓库和 Go 模块，可按需引入：
 
-| 包 | 说明 | 重依赖 | 未来模块路径 |
-|---|------|--------|-------------|
-| `cloud/` | 云服务集成（AWS, OpenTelemetry） | aws-sdk-go-v2, opentelemetry | `github.com/zzliekkas/flow-cloud` |
-| `payment/` | 支付集成（Stripe, PayPal, Alipay, WeChat） | stripe-go, paypal, alipay, wechatpay | `github.com/zzliekkas/flow-payment` |
-| `storage/` | 对象存储（OSS, S3, Qiniu, COS） | aliyun-oss, aws-s3, qiniu, cos, imaging | `github.com/zzliekkas/flow-storage` |
-| `websocket/` | WebSocket 管理（已抽离，可选迁移） | gorilla/websocket | `github.com/zzliekkas/flow-websocket`（v0.1.0+） |
+| 原包 | 独立模块 | 版本 | 重依赖 |
+|------|---------|------|--------|
+| `cloud/` | [`github.com/zzliekkas/flow-cloud`](https://github.com/zzliekkas/flow-cloud) | v0.1.0 | aws-sdk-go-v2, opentelemetry |
+| `payment/` | [`github.com/zzliekkas/flow-payment`](https://github.com/zzliekkas/flow-payment) | v0.1.0 | stripe-go, paypal, alipay, wechatpay |
+| `storage/` | [`github.com/zzliekkas/flow-storage`](https://github.com/zzliekkas/flow-storage) | v0.1.0 | aliyun-oss, aws-s3, qiniu, cos, imaging |
+| `websocket/` | [`github.com/zzliekkas/flow-websocket`](https://github.com/zzliekkas/flow-websocket) | v0.1.0 | gorilla/websocket |
+
+> 注意：为了向后兼容，`flow/v2` 中仍保留这些子包的源码，后续版本会标记 deprecated。
 
 ## 工具模块（Utility）
 | 包 | 说明 |

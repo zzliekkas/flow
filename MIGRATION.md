@@ -187,34 +187,36 @@ engine.Shutdown(ctx) // 执行关闭钩子 + 停止 HTTP 服务器
 
 ---
 
-## 11. 可选迁移：WebSocket 独立模块（flow-websocket）
+## 11. 可选迁移：独立扩展模块
 
-从 v2.0.0 开始，`flow/v2/websocket` 的代码已经在独立模块中提供：
+以下四个子包已提取为独立 Go 模块（均为 v0.1.0）。你可以按需迁移 import 路径：
 
-- 模块：`github.com/zzliekkas/flow-websocket`（当前版本：`v0.1.0`）
+| 原 import | 新 import | go get |
+|-----------|-----------|--------|
+| `flow/v2/cloud` | `github.com/zzliekkas/flow-cloud` | `go get github.com/zzliekkas/flow-cloud@v0.1.0` |
+| `flow/v2/payment` | `github.com/zzliekkas/flow-payment` | `go get github.com/zzliekkas/flow-payment@v0.1.0` |
+| `flow/v2/storage` | `github.com/zzliekkas/flow-storage` | `go get github.com/zzliekkas/flow-storage@v0.1.0` |
+| `flow/v2/websocket` | `github.com/zzliekkas/flow-websocket` | `go get github.com/zzliekkas/flow-websocket@v0.1.0` |
 
-如果你希望减少对 `flow/v2` 的依赖，或希望单独升级 WebSocket 能力，可将 import 从：
+**迁移示例（以 storage 为例）：**
 
 ```go
-import "github.com/zzliekkas/flow/v2/websocket"
+// 旧
+import "github.com/zzliekkas/flow/v2/storage"
+import "github.com/zzliekkas/flow/v2/storage/cloud"
+
+// 新
+import "github.com/zzliekkas/flow-storage"
+import "github.com/zzliekkas/flow-storage/cloud"
 ```
 
-改为：
-
-```go
-import websocket "github.com/zzliekkas/flow-websocket"
-```
-
-并在 `go.mod` 增加依赖：
+**本地联调可用 replace：**
 
 ```
-require github.com/zzliekkas/flow-websocket v0.1.0
-```
-
-本地联调可用 `replace`：
-
-```
+replace github.com/zzliekkas/flow-storage => ../flow-storage
+replace github.com/zzliekkas/flow-payment => ../flow-payment
+replace github.com/zzliekkas/flow-cloud => ../flow-cloud
 replace github.com/zzliekkas/flow-websocket => ../flow-websocket
 ```
 
-说明：为了向后兼容，`flow/v2/websocket` 目前仍保留，后续会在 v2.x 的某个版本标记 deprecated。
+> 说明：为了向后兼容，`flow/v2` 中仍保留这些子包的源码，后续版本会标记 deprecated。
