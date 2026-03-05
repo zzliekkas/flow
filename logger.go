@@ -93,22 +93,6 @@ func (l *defaultLogger) Errorf(format string, args ...interface{}) {
 	}
 }
 
-// parseLogLevel 将字符串日志级别转为常量
-func parseLogLevel(level string) int {
-	switch level {
-	case "debug":
-		return LogLevelDebug
-	case "info":
-		return LogLevelInfo
-	case "warn", "warning":
-		return LogLevelWarn
-	case "error":
-		return LogLevelError
-	default:
-		return LogLevelInfo
-	}
-}
-
 // frameworkLogger 框架内部使用的全局日志实例
 var frameworkLogger Logger = newDefaultLogger()
 

@@ -22,8 +22,3 @@ func SetApplication(app *Application) {
 func GetApplication() *Application {
 	return instance
 }
-
-// HasApplication 检查是否已设置全局应用实例
-func HasApplication() bool {
-	return instance != nil
-}
