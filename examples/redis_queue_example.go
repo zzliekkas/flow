@@ -7,8 +7,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/zzliekkas/flow/queue"
-	qredis "github.com/zzliekkas/flow/queue/redis"
+	"github.com/zzliekkas/flow/v2/queue"
+	qredis "github.com/zzliekkas/flow/v2/queue/redis"
 )
 
 // RedisQueueExample 演示Redis队列的基本用法

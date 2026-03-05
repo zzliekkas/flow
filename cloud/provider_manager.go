@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/zzliekkas/flow/cloud/providers"
+	"github.com/zzliekkas/flow/v2/cloud/providers"
 )
 
 // ProviderManager 云服务提供商管理器

@@ -6,33 +6,25 @@ package flow
 // 3. 外部依赖
 // 4. 内部包
 import (
-	"context"
-	"fmt"
-	"log"
 	"net/http"
 	"os"
-	"os/signal"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"sync"
-	"syscall"
-	"time"
 
 	// 确保在导入gin之前设置好gin模式
-	_ "github.com/zzliekkas/flow/ginmode"
+	_ "github.com/zzliekkas/flow/v2/ginmode"
 
 	"github.com/gin-gonic/gin"
-	"github.com/zzliekkas/flow/config"
-	"github.com/zzliekkas/flow/db"
+	"github.com/zzliekkas/flow/v2/config"
+	"github.com/zzliekkas/flow/v2/db"
+	"github.com/zzliekkas/flow/v2/di"
 	"go.uber.org/dig"
-	"gorm.io/gorm"
 )
 
 // 全局常量
 const (
 	// 版本信息
-	Version = "1.1.2"
+	Version = "2.0.0"
 
 	FlowBanner = `
 [%s] [INFO] 
@@ -44,11 +36,8 @@ const (
 `
 )
 
-// 添加单例变量
-var (
-	engineInstance *Engine
-	once           sync.Once
-)
+// defaultEngine 全局默认引擎实例（可选，用于向后兼容）
+var defaultEngine *Engine
 
 // H is a shortcut for map[string]interface{}
 type H map[string]interface{}
@@ -56,18 +45,20 @@ type H map[string]interface{}
 // Engine 是Flow框架的主结构体，封装了Gin引擎和依赖注入容器
 type Engine struct {
 	*gin.Engine
-	container     *dig.Container
+	container     *di.Container
 	config        *Config
-	dbInitialized bool // 数据库是否已初始化
+	server        *http.Server // HTTP服务器实例，用于优雅关闭
+	dbInitialized bool         // 数据库是否已初始化
 
 	// 生命周期钩子
-	shutdownHooks []func()
+	startHooks    []hook // 启动钩子（Run之前执行）
+	shutdownHooks []hook // 关闭钩子（Shutdown时执行）
 }
 
-// Context 是Flow框架的上下文结构体，扩展了Gin的Context
-type Context struct {
-	*gin.Context
-	engine *Engine
+// hook 带优先级的钩子函数
+type hook struct {
+	fn       func()
+	priority int // 数值越小优先级越高
 }
 
 // Config 包含框架配置选项
@@ -93,7 +84,7 @@ func WithConfig(configPath string) Option {
 		configManager, err := loadConfig(configPath)
 		if err != nil {
 			// 记录错误但不中断
-			fmt.Printf("加载配置文件失败: %v\n", err)
+			flog.Warnf("加载配置文件失败: %v", err)
 			// 创建一个空的配置管理器继续使用
 			configManager = config.NewConfigManager()
 			configManager.Set("app.name", "flow")
@@ -144,10 +135,7 @@ func loadConfig(configPath string) (*config.ConfigManager, error) {
 	err = cfg.Load()
 	if err != nil {
 		// 如果加载失败，使用空配置
-		if e := os.Getenv("FLOW_DEBUG"); e == "true" {
-			fmt.Printf("警告: 加载配置文件失败: %v\n", err)
-			fmt.Println("将使用默认配置继续运行")
-		}
+		flog.Debugf("加载配置文件失败: %v，将使用默认配置继续运行", err)
 
 		// 初始化一些基本配置值
 		cfg.Set("app.name", "flow")
@@ -166,7 +154,7 @@ func loadConfig(configPath string) (*config.ConfigManager, error) {
 func applyConfigToEngine(e *Engine, cfg *config.ConfigManager) {
 	if cfg == nil {
 		// 如果配置为nil，不做任何操作
-		fmt.Println("警告: 配置为空，跳过应用配置到引擎")
+		flog.Warn("配置为空，跳过应用配置到引擎")
 		return
 	}
 
@@ -240,52 +228,22 @@ func configureLogLevel(level string) {
 	// 依据级别配置日志
 	switch strings.ToLower(level) {
 	case "debug":
-		// 设置为详细日志模式
-		fmt.Println("日志级别设置为: DEBUG")
+		flog.Debug("日志级别设置为: DEBUG")
 	case "info":
-		// 设置为信息日志模式
-		fmt.Println("日志级别设置为: INFO")
+		flog.Debug("日志级别设置为: INFO")
 	case "warn", "warning":
-		// 设置为警告日志模式
-		fmt.Println("日志级别设置为: WARN")
+		flog.Debug("日志级别设置为: WARN")
 	case "error":
-		// 设置为错误日志模式
-		fmt.Println("日志级别设置为: ERROR")
+		flog.Debug("日志级别设置为: ERROR")
 	default:
-		// 默认为INFO级别
-		fmt.Println("未知日志级别，使用默认: INFO")
+		flog.Debug("未知日志级别，使用默认: INFO")
 	}
 }
 
 // WithDatabase 返回一个配置数据库的选项
 func WithDatabase(options ...interface{}) Option {
 	return func(e *Engine) {
-		// 线程安全地存储数据库选项
-		dbOptionsMutex.Lock()
-		if len(options) > 0 {
-			databaseOptions = make([]interface{}, len(options))
-			copy(options, databaseOptions)
-		}
-		// 确保db包能获取选项
-		db.SetDatabaseOptions(databaseOptions)
-		dbOptionsMutex.Unlock()
-
-		// 注册数据库初始化提供者
-		e.Provide(initDatabaseProvider)
-
-		// 注册关闭钩子
-		e.OnShutdown(func() {
-			// 尝试关闭数据库连接
-			e.Invoke(func(provider interface{}) {
-				if dbProvider, ok := provider.(*db.DbProvider); ok {
-					if err := dbProvider.Close(); err != nil {
-						fmt.Printf("关闭数据库连接时出错: %v\n", err)
-					} else {
-						log.Println("数据库连接已安全关闭")
-					}
-				}
-			})
-		})
+		e.WithDatabase(options...)
 	}
 }
 
@@ -331,139 +289,70 @@ func WithConfigWatcher(callback func()) Option {
 
 // New 创建一个新的Flow引擎实例，支持选项模式配置
 func New(options ...Option) *Engine {
-	// 使用单例模式，确保只创建一个Engine实例
-	once.Do(func() {
-		// 创建依赖注入容器
-		container := dig.New()
+	// 创建依赖注入容器
+	container := di.New()
 
-		// 默认配置
-		defaultMode := "debug"
-		// 检查环境变量中的配置
-		if flowMode := os.Getenv("FLOW_MODE"); flowMode != "" {
-			defaultMode = flowMode
+	// 默认配置
+	defaultMode := "debug"
+	// 检查环境变量中的配置
+	if flowMode := os.Getenv("FLOW_MODE"); flowMode != "" {
+		defaultMode = flowMode
+	}
+	// 保持与GIN_MODE一致性
+	if ginMode := os.Getenv("GIN_MODE"); ginMode != "" {
+		switch ginMode {
+		case "release":
+			defaultMode = "release"
+		case "test":
+			defaultMode = "test"
+		case "debug":
+			defaultMode = "debug"
 		}
-		// 保持与GIN_MODE一致性
-		if ginMode := os.Getenv("GIN_MODE"); ginMode != "" {
-			switch ginMode {
-			case "release":
-				defaultMode = "release"
-			case "test":
-				defaultMode = "test"
-			case "debug":
-				defaultMode = "debug"
-			}
-		}
+	}
 
-		config := &Config{
-			Mode:       defaultMode,
-			JSONLib:    "default",
-			LogLevel:   "info",
-			ConfigPath: "./config",
-		}
+	cfg := &Config{
+		Mode:       defaultMode,
+		JSONLib:    "default",
+		LogLevel:   "info",
+		ConfigPath: "./config",
+	}
 
-		// 创建gin引擎
-		ginEngine := gin.New()
+	// 创建gin引擎
+	ginEngine := gin.New()
 
-		// 创建Flow引擎
-		engineInstance = &Engine{
-			Engine:    ginEngine,
-			container: container,
-			config:    config,
-		}
+	// 创建Flow引擎
+	e := &Engine{
+		Engine:    ginEngine,
+		container: container,
+		config:    cfg,
+	}
 
-		// 添加默认中间件 - 修复类型不匹配问题
-		// 使用gin原生的Recovery中间件，并包装成Flow的HandlerFunc
-		engineInstance.Use(func(c *Context) {
-			ginRecovery := gin.Recovery()
-			ginRecovery(c.Context)
-		})
+	// 添加默认中间件
+	e.Use(func(c *Context) {
+		ginRecovery := gin.Recovery()
+		ginRecovery(c.Context)
 	})
 
 	// 应用选项
 	for _, option := range options {
-		option(engineInstance)
+		option(e)
 	}
 
-	return engineInstance
-}
-
-// NewContext 创建Flow上下文
-func (e *Engine) NewContext(c *gin.Context) *Context {
-	return &Context{
-		Context: c,
-		engine:  e,
-	}
-}
-
-// Handle 注册处理函数到给定的HTTP方法和路径
-func (e *Engine) Handle(httpMethod, relativePath string, handlers ...HandlerFunc) {
-	ginHandlers := make([]gin.HandlerFunc, len(handlers))
-	for i, handler := range handlers {
-		handler := handler // 创建局部变量避免闭包问题
-		ginHandlers[i] = func(c *gin.Context) {
-			flowContext := e.NewContext(c)
-			handler(flowContext)
-		}
-	}
-	e.Engine.Handle(httpMethod, relativePath, ginHandlers...)
-}
-
-// GET 是对Handle("GET", path, handlers)的简便方法
-func (e *Engine) GET(relativePath string, handlers ...HandlerFunc) {
-	e.Handle(http.MethodGet, relativePath, handlers...)
-}
-
-// POST 是对Handle("POST", path, handlers)的简便方法
-func (e *Engine) POST(relativePath string, handlers ...HandlerFunc) {
-	e.Handle(http.MethodPost, relativePath, handlers...)
-}
-
-// PUT 是对Handle("PUT", path, handlers)的简便方法
-func (e *Engine) PUT(relativePath string, handlers ...HandlerFunc) {
-	e.Handle(http.MethodPut, relativePath, handlers...)
-}
-
-// DELETE 是对Handle("DELETE", path, handlers)的简便方法
-func (e *Engine) DELETE(relativePath string, handlers ...HandlerFunc) {
-	e.Handle(http.MethodDelete, relativePath, handlers...)
-}
-
-// PATCH 是对Handle("PATCH", path, handlers)的简便方法
-func (e *Engine) PATCH(relativePath string, handlers ...HandlerFunc) {
-	e.Handle(http.MethodPatch, relativePath, handlers...)
-}
-
-// Group 创建一个新的路由组
-func (e *Engine) Group(relativePath string, handlers ...HandlerFunc) *RouterGroup {
-	ginHandlers := make([]gin.HandlerFunc, len(handlers))
-	for i, handler := range handlers {
-		handler := handler // 创建局部变量避免闭包问题
-		ginHandlers[i] = func(c *gin.Context) {
-			flowContext := e.NewContext(c)
-			handler(flowContext)
-		}
+	// 设置为默认引擎（首次创建的实例）
+	if defaultEngine == nil {
+		defaultEngine = e
 	}
 
-	// 修复无效字段名问题
-	ginGroup := e.Engine.Group(relativePath, ginHandlers...)
-	return &RouterGroup{
-		RouterGroup: *ginGroup,
-		engine:      e,
-	}
-}
-
-// Use 添加全局中间件
-func (e *Engine) Use(middleware ...HandlerFunc) *Engine {
-	ginMiddlewares := make([]gin.HandlerFunc, len(middleware))
-	for i, m := range middleware {
-		m := m // 创建局部变量避免闭包问题
-		ginMiddlewares[i] = func(c *gin.Context) {
-			flowContext := e.NewContext(c)
-			m(flowContext)
-		}
-	}
-	e.Engine.Use(ginMiddlewares...)
 	return e
+}
+
+// Default 返回默认的全局引擎实例
+// 如果尚未创建，会自动创建一个默认配置的实例
+func Default() *Engine {
+	if defaultEngine == nil {
+		defaultEngine = New()
+	}
+	return defaultEngine
 }
 
 // Provide 向依赖注入容器注册服务
@@ -476,117 +365,9 @@ func (e *Engine) Invoke(function interface{}) error {
 	return e.container.Invoke(function)
 }
 
-// Run 启动HTTP服务器
-func (e *Engine) Run(addr ...string) error {
-	// 显示Flow框架Banner
-	if os.Getenv("FLOW_HIDE_BANNER") != "true" {
-		fmt.Printf(FlowBanner, Version)
-	}
-
-	return e.Engine.Run(addr...)
-}
-
-// OnShutdown 注册应用关闭时的钩子函数
-func (e *Engine) OnShutdown(fn func()) {
-	e.shutdownHooks = append(e.shutdownHooks, fn)
-}
-
-// Shutdown 优雅关闭HTTP服务器
-func (e *Engine) Shutdown(ctx context.Context) error {
-	// 调用所有关闭钩子
-	for _, hook := range e.shutdownHooks {
-		hook()
-	}
-
-	// 获取 Gin 底层的 HTTP 服务器
-	// 由于 Gin 实际上不暴露内部 HTTP 服务器的引用，我们只能模拟关闭
-	// 在真实应用中，需要持有 http.Server 的引用才能调用其 Shutdown 方法
-	// 这里做一个简单的占位实现，后续可以扩展
-	return nil
-}
-
-// Inject 向上下文注入依赖
-func (c *Context) Inject(target interface{}) error {
-	return c.engine.container.Invoke(func(injected interface{}) {
-		*target.(*interface{}) = injected
-	})
-}
-
-// RouterGroup 是Flow的路由组结构
-type RouterGroup struct {
-	RouterGroup gin.RouterGroup
-	engine      *Engine
-}
-
-// Handle 在路由组中注册处理函数
-func (g *RouterGroup) Handle(httpMethod, relativePath string, handlers ...HandlerFunc) {
-	ginHandlers := make([]gin.HandlerFunc, len(handlers))
-	for i, handler := range handlers {
-		handler := handler // 创建局部变量避免闭包问题
-		ginHandlers[i] = func(c *gin.Context) {
-			flowContext := g.engine.NewContext(c)
-			handler(flowContext)
-		}
-	}
-	g.RouterGroup.Handle(httpMethod, relativePath, ginHandlers...)
-}
-
-// GET 是对Handle("GET", path, handlers)的简便方法
-func (g *RouterGroup) GET(relativePath string, handlers ...HandlerFunc) {
-	g.Handle(http.MethodGet, relativePath, handlers...)
-}
-
-// POST 是对Handle("POST", path, handlers)的简便方法
-func (g *RouterGroup) POST(relativePath string, handlers ...HandlerFunc) {
-	g.Handle(http.MethodPost, relativePath, handlers...)
-}
-
-// PUT 是对Handle("PUT", path, handlers)的简便方法
-func (g *RouterGroup) PUT(relativePath string, handlers ...HandlerFunc) {
-	g.Handle(http.MethodPut, relativePath, handlers...)
-}
-
-// DELETE 是对Handle("DELETE", path, handlers)的简便方法
-func (g *RouterGroup) DELETE(relativePath string, handlers ...HandlerFunc) {
-	g.Handle(http.MethodDelete, relativePath, handlers...)
-}
-
-// PATCH 是对Handle("PATCH", path, handlers)的简便方法
-func (g *RouterGroup) PATCH(relativePath string, handlers ...HandlerFunc) {
-	g.Handle(http.MethodPatch, relativePath, handlers...)
-}
-
-// Group 创建一个子路由组
-func (g *RouterGroup) Group(relativePath string, handlers ...HandlerFunc) *RouterGroup {
-	ginHandlers := make([]gin.HandlerFunc, len(handlers))
-	for i, handler := range handlers {
-		handler := handler // 创建局部变量避免闭包问题
-		ginHandlers[i] = func(c *gin.Context) {
-			flowContext := g.engine.NewContext(c)
-			handler(flowContext)
-		}
-	}
-
-	// 修复无效字段名问题
-	ginGroup := g.RouterGroup.Group(relativePath, ginHandlers...)
-	return &RouterGroup{
-		RouterGroup: *ginGroup,
-		engine:      g.engine,
-	}
-}
-
-// Use 添加路由组中间件
-func (g *RouterGroup) Use(middleware ...HandlerFunc) *RouterGroup {
-	ginMiddlewares := make([]gin.HandlerFunc, len(middleware))
-	for i, m := range middleware {
-		m := m // 创建局部变量避免闭包问题
-		ginMiddlewares[i] = func(c *gin.Context) {
-			flowContext := g.engine.NewContext(c)
-			m(flowContext)
-		}
-	}
-	g.RouterGroup.Use(ginMiddlewares...)
-	return g
+// DI 返回依赖注入容器，提供完整的DI操作API（ProvideNamed, ProvideValue, Extract等）
+func (e *Engine) DI() *di.Container {
+	return e.container
 }
 
 // IsDebug 检查应用是否在调试模式下运行
@@ -597,160 +378,6 @@ func (e *Engine) IsDebug() bool {
 // GetConfig 获取框架配置
 func (e *Engine) GetConfig() *Config {
 	return e.config
-}
-
-// DB 获取数据库连接
-// 这是一个便捷方法，用于从上下文中获取数据库连接
-func (c *Context) DB() *gorm.DB {
-	var dbProvider *db.DbProvider
-	err := c.engine.Invoke(func(p *db.DbProvider) {
-		dbProvider = p
-	})
-
-	if err != nil || dbProvider == nil {
-		return nil
-	}
-
-	return dbProvider.DB
-}
-
-// Cache 获取缓存实例
-// 这是一个便捷方法，用于从上下文中获取缓存实例
-func (c *Context) Cache() interface{} {
-	var cache interface{}
-	c.Inject(&cache)
-	return cache
-}
-
-// QueryInt 获取查询参数并转换为整数，如果不存在或转换失败则返回默认值
-func (c *Context) QueryInt(key string, defaultValue int) int {
-	value := c.Query(key)
-	if value == "" {
-		return defaultValue
-	}
-
-	intValue, err := c.IntParam(value)
-	if err != nil {
-		return defaultValue
-	}
-
-	return intValue
-}
-
-// ParamUint 获取URL参数并转换为无符号整数，如果不存在或转换失败则返回0
-func (c *Context) ParamUint(key string) uint {
-	value := c.Param(key)
-	if value == "" {
-		return 0
-	}
-
-	uintValue, err := c.UintParam(value)
-	if err != nil {
-		return 0
-	}
-
-	return uintValue
-}
-
-// IntParam 将字符串转换为整数
-func (c *Context) IntParam(value string) (int, error) {
-	return strconv.Atoi(value)
-}
-
-// UintParam 将字符串转换为无符号整数
-func (c *Context) UintParam(value string) (uint, error) {
-	val, err := strconv.ParseUint(value, 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	return uint(val), nil
-}
-
-// Config 获取配置实例
-func (c *Context) Config() *config.ConfigManager {
-	var cfg *config.ConfigManager
-	err := c.engine.Invoke(func(c *config.ConfigManager) {
-		cfg = c
-	})
-
-	if err != nil || cfg == nil {
-		// 如果没有注册配置，返回一个具备安全默认值的空配置
-		cfg = config.NewConfigManager()
-		// 手动初始化 viper，确保不会发生空指针异常
-		cfg.Set("app.name", "flow")
-		cfg.Set("app.version", Version)
-		cfg.Set("app.mode", c.engine.config.Mode)
-		cfg.Set("app.log_level", c.engine.config.LogLevel)
-	}
-
-	return cfg
-}
-
-// ConfigValue 获取指定键的配置值
-func (c *Context) ConfigValue(key string) interface{} {
-	cfg := c.Config()
-	if cfg == nil {
-		return nil
-	}
-	return cfg.Get(key)
-}
-
-// ConfigString 获取字符串配置值
-func (c *Context) ConfigString(key string, defaultValue string) string {
-	cfg := c.Config()
-	if cfg == nil {
-		return defaultValue
-	}
-
-	value := cfg.GetString(key)
-	if value == "" {
-		return defaultValue
-	}
-	return value
-}
-
-// ConfigInt 获取整数配置值
-func (c *Context) ConfigInt(key string, defaultValue int) int {
-	cfg := c.Config()
-	if cfg == nil {
-		return defaultValue
-	}
-
-	return cfg.GetInt(key)
-}
-
-// ConfigBool 获取布尔配置值
-func (c *Context) ConfigBool(key string, defaultValue bool) bool {
-	cfg := c.Config()
-	if cfg == nil {
-		return defaultValue
-	}
-
-	return cfg.GetBool(key)
-}
-
-// RegisterDatabaseInitializer 注册数据库初始化器
-func (e *Engine) RegisterDatabaseInitializer() {
-	if !e.dbInitialized {
-		db.RegisterDatabaseInitializer(func(initializer db.DbInitializer) {
-			// 初始化数据库
-			dbProvider, err := initializer(nil)
-			if err != nil {
-				log.Printf("数据库初始化失败: %v", err)
-				return
-			}
-
-			// 将数据库实例注入容器
-			err = e.container.Provide(func() interface{} {
-				return dbProvider
-			})
-			if err != nil {
-				log.Printf("注入数据库实例失败: %v", err)
-				return
-			}
-			e.dbInitialized = true
-		})
-	}
 }
 
 // DB 返回默认数据库连接
@@ -765,21 +392,8 @@ func (e *Engine) DB() (*db.DbProvider, bool) {
 	return provider, true
 }
 
-// Container 返回依赖注入容器
+// Container 返回底层的dig依赖注入容器（向后兼容）
+// 推荐使用 DI() 方法获取增强的容器API
 func (e *Engine) Container() *dig.Container {
-	return e.container
-}
-
-// WaitForTermination 等待终止信号
-func (e *Engine) WaitForTermination() {
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := e.Shutdown(ctx); err != nil {
-		log.Printf("服务器关闭失败: %v", err)
-	}
+	return e.container.Dig()
 }

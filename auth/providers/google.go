@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/zzliekkas/flow/auth/oauth"
-	"github.com/zzliekkas/flow/auth/social"
+	"github.com/zzliekkas/flow/v2/auth/oauth"
+	"github.com/zzliekkas/flow/v2/auth/social"
 )
 
 const (

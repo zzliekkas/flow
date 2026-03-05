@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
-	"github.com/zzliekkas/flow"
+	"github.com/zzliekkas/flow/v2"
 )
 
 // Application 是Flow应用容器

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/zzliekkas/flow"
+	"github.com/zzliekkas/flow/v2"
 )
 
 // CORSConfig 是CORS中间件的配置选项

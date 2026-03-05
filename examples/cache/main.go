@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/zzliekkas/flow"
-	"github.com/zzliekkas/flow/app"
-	"github.com/zzliekkas/flow/cache"
-	"github.com/zzliekkas/flow/middleware"
+	"github.com/zzliekkas/flow/v2"
+	"github.com/zzliekkas/flow/v2/app"
+	"github.com/zzliekkas/flow/v2/cache"
+	"github.com/zzliekkas/flow/v2/middleware"
 )
 
 // 产品结构体

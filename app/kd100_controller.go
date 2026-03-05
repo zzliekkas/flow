@@ -3,8 +3,8 @@ package app
 import (
 	"net/http"
 
-	"github.com/zzliekkas/flow"
-	"github.com/zzliekkas/flow/cloud/providers"
+	"github.com/zzliekkas/flow/v2"
+	"github.com/zzliekkas/flow/v2/cloud/providers"
 )
 
 // Kd100Controller 示例控制器

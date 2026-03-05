@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/zzliekkas/flow/auth"
+	"github.com/zzliekkas/flow/v2/auth"
 )
 
 // 上下文键

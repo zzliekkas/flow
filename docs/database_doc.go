@@ -1,7 +1,7 @@
 package docs
 
 import (
-	"github.com/zzliekkas/flow/app"
+	"github.com/zzliekkas/flow/v2/app"
 )
 
 // DatabaseDocGenerator 用于生成数据库文档的生成器

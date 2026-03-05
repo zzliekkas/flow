@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/zzliekkas/flow"
+	"github.com/zzliekkas/flow/v2"
 )
 
 // 存储器错误定义

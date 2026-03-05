@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/zzliekkas/flow/di"
-	"github.com/zzliekkas/flow/storage/local"
+	"github.com/zzliekkas/flow/v2/di"
+	"github.com/zzliekkas/flow/v2/storage/local"
 )
 
 // StorageConfig 文件存储系统配置

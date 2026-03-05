@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zzliekkas/flow/cloud/storage"
+	"github.com/zzliekkas/flow/v2/cloud/storage"
 )
 
 // StorageExample 展示如何使用云存储服务

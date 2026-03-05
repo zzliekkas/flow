@@ -3,7 +3,7 @@ package security
 import (
 	"strings"
 
-	"github.com/zzliekkas/flow"
+	"github.com/zzliekkas/flow/v2"
 )
 
 // SecurityMiddleware 返回完整的安全中间件链

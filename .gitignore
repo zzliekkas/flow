@@ -44,3 +44,4 @@ logs/
 
 # Backup files
 *.bak 
+.gitnexus

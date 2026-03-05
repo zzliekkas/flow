@@ -3,8 +3,8 @@ package main
 import (
 	"os"
 
-	"github.com/zzliekkas/flow/cli"
-	"github.com/zzliekkas/flow/cli/commands"
+	"github.com/zzliekkas/flow/v2/cli"
+	"github.com/zzliekkas/flow/v2/cli/commands"
 )
 
 func main() {

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/zzliekkas/flow/cli"
+	"github.com/zzliekkas/flow/v2/cli"
 )
 
 // 初始化随机数种子

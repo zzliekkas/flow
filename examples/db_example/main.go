@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/zzliekkas/flow/db"
+	"github.com/zzliekkas/flow/v2/db"
 )
 
 func main() {

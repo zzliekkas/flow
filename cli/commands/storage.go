@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/zzliekkas/flow/cli"
+	"github.com/zzliekkas/flow/v2/cli"
 )
 
 // NewStorageCommand 创建存储管理命令

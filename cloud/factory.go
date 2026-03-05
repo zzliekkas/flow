@@ -3,8 +3,8 @@ package cloud
 import (
 	"fmt"
 
-	"github.com/zzliekkas/flow/cloud/storage"
-	"github.com/zzliekkas/flow/config"
+	"github.com/zzliekkas/flow/v2/cloud/storage"
+	"github.com/zzliekkas/flow/v2/config"
 )
 
 // 云服务提供商类型

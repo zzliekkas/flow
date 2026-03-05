@@ -1,6 +1,6 @@
 package commands
 
-import "github.com/zzliekkas/flow/cli"
+import "github.com/zzliekkas/flow/v2/cli"
 
 // RegisterCommands 将所有命令注册到CLI应用
 func RegisterCommands(app *cli.App) {

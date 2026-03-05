@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/zzliekkas/flow/event"
+	"github.com/zzliekkas/flow/v2/event"
 )
 
 // QueueEventListener 队列事件监听器，将事件转换为队列任务

@@ -2,7 +2,7 @@ package commands
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/zzliekkas/flow/cli"
+	"github.com/zzliekkas/flow/v2/cli"
 )
 
 // NewDBCommand 创建数据库命令

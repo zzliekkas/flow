@@ -3,8 +3,8 @@ package db
 import (
 	"errors"
 
-	"github.com/zzliekkas/flow/config"
-	"github.com/zzliekkas/flow/di"
+	"github.com/zzliekkas/flow/v2/config"
+	"github.com/zzliekkas/flow/v2/di"
 	"gorm.io/gorm"
 )
 

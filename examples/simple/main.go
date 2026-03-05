@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/zzliekkas/flow"
-	"github.com/zzliekkas/flow/middleware"
+	"github.com/zzliekkas/flow/v2"
+	"github.com/zzliekkas/flow/v2/middleware"
 )
 
 // 用户模型

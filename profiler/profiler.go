@@ -9,7 +9,7 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/zzliekkas/flow/utils"
+	"github.com/zzliekkas/flow/v2/utils"
 )
 
 // Profiler 性能分析器

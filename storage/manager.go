@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/zzliekkas/flow/storage/core"
+	"github.com/zzliekkas/flow/v2/storage/core"
 )
 
 // Manager 存储管理器

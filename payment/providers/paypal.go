@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/plutov/paypal/v4"
-	"github.com/zzliekkas/flow/payment"
+	"github.com/zzliekkas/flow/v2/payment"
 )
 
 // PayPalProvider PayPal支付提供者

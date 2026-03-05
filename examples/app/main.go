@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/zzliekkas/flow"
-	"github.com/zzliekkas/flow/app"
-	"github.com/zzliekkas/flow/config"
-	"github.com/zzliekkas/flow/middleware"
-	"github.com/zzliekkas/flow/payment"
-	"github.com/zzliekkas/flow/payment/providers"
+	"github.com/zzliekkas/flow/v2"
+	"github.com/zzliekkas/flow/v2/app"
+	"github.com/zzliekkas/flow/v2/config"
+	"github.com/zzliekkas/flow/v2/middleware"
+	"github.com/zzliekkas/flow/v2/payment"
+	"github.com/zzliekkas/flow/v2/payment/providers"
 )
 
 // 自定义服务提供者

@@ -1,8 +1,8 @@
 package event
 
 import (
-	"github.com/zzliekkas/flow"
-	"github.com/zzliekkas/flow/di"
+	"github.com/zzliekkas/flow/v2"
+	"github.com/zzliekkas/flow/v2/di"
 )
 
 const (

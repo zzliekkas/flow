@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/zzliekkas/flow/app"
-	"github.com/zzliekkas/flow/config"
+	"github.com/zzliekkas/flow/v2/app"
+	"github.com/zzliekkas/flow/v2/config"
 )
 
 // CacheProvider 缓存服务提供者

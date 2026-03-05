@@ -3,7 +3,7 @@ package providers
 import (
 	"errors"
 
-	"github.com/zzliekkas/flow/config"
+	"github.com/zzliekkas/flow/v2/config"
 )
 
 type Kd100Provider struct{}

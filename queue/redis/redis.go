@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-	"github.com/zzliekkas/flow/queue"
+	"github.com/zzliekkas/flow/v2/queue"
 )
 
 // 定义Redis队列的键前缀

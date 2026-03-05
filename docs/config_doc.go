@@ -1,7 +1,7 @@
 package docs
 
 import (
-	"github.com/zzliekkas/flow/app"
+	"github.com/zzliekkas/flow/v2/app"
 )
 
 // ConfigDocGenerator 用于生成配置文档的生成器

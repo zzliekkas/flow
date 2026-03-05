@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/zzliekkas/flow/i18n"
+	"github.com/zzliekkas/flow/v2/i18n"
 )
 
 // 定义上下文中保存语言的键

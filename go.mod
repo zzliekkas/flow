@@ -1,4 +1,4 @@
-module github.com/zzliekkas/flow
+module github.com/zzliekkas/flow/v2
 
 go 1.23.0
 

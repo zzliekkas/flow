@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zzliekkas/flow"
-	"github.com/zzliekkas/flow/auth"
+	"github.com/zzliekkas/flow/v2"
+	"github.com/zzliekkas/flow/v2/auth"
 )
 
 // OAuth2Config OAuth2配置

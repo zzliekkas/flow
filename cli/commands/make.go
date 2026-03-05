@@ -8,7 +8,7 @@ import (
 	"text/template"
 
 	"github.com/spf13/cobra"
-	"github.com/zzliekkas/flow/cli"
+	"github.com/zzliekkas/flow/v2/cli"
 )
 
 var (
@@ -201,7 +201,7 @@ func getTemplateForResource(resourceType string) (*template.Template, error) {
 		templateContent = `package {{.Package}}
 
 import (
-	"github.com/zzliekkas/flow"
+	"github.com/zzliekkas/flow/v2"
 )
 
 // {{.PascalName}}Controller 控制器

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/smartwalle/alipay/v3"
-	"github.com/zzliekkas/flow/payment"
+	"github.com/zzliekkas/flow/v2/payment"
 )
 
 // AlipayProvider 支付宝支付提供者

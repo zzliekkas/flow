@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/zzliekkas/flow"
-	"github.com/zzliekkas/flow/auth/oauth"
+	"github.com/zzliekkas/flow/v2"
+	"github.com/zzliekkas/flow/v2/auth/oauth"
 )
 
 // Provider 社交登录提供者接口

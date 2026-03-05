@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/zzliekkas/flow"
-	"github.com/zzliekkas/flow/auth"
-	"github.com/zzliekkas/flow/middleware"
+	"github.com/zzliekkas/flow/v2"
+	"github.com/zzliekkas/flow/v2/auth"
+	"github.com/zzliekkas/flow/v2/middleware"
 )
 
 // TokenBlacklist 定义令牌黑名单接口

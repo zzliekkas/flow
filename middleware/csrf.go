@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/zzliekkas/flow"
+	"github.com/zzliekkas/flow/v2"
 )
 
 // CSRF错误常量

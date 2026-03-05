@@ -8,7 +8,7 @@ import (
 	"os"
 	"text/template"
 
-	"github.com/zzliekkas/flow/auth/drivers"
+	"github.com/zzliekkas/flow/v2/auth/drivers"
 )
 
 // User 代表应用程序中的用户模型

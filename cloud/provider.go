@@ -1,7 +1,7 @@
 package cloud
 
 import (
-	"github.com/zzliekkas/flow/app"
+	"github.com/zzliekkas/flow/v2/app"
 )
 
 // CloudServiceProvider 云服务提供者

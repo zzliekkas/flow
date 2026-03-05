@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zzliekkas/flow/app"
+	"github.com/zzliekkas/flow/v2/app"
 )
 
 // APIDocGenerator 用于生成API文档的生成器

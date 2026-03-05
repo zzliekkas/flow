@@ -3,7 +3,7 @@ package payment
 import (
 	"net/http"
 
-	"github.com/zzliekkas/flow"
+	"github.com/zzliekkas/flow/v2"
 )
 
 // RegisterRoutes 注册支付相关路由

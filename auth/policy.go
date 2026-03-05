@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/zzliekkas/flow"
+	"github.com/zzliekkas/flow/v2"
 )
 
 // 策略相关错误

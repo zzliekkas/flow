@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zzliekkas/flow/storage"
-	"github.com/zzliekkas/flow/storage/cloud"
+	"github.com/zzliekkas/flow/v2/storage"
+	"github.com/zzliekkas/flow/v2/storage/cloud"
 )
 
 // CloudStorageDriverExample 展示云存储的基本用法

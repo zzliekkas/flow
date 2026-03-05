@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zzliekkas/flow/config"
+	"github.com/zzliekkas/flow/v2/config"
 )
 
 // Kd100Service 封装快递100相关API

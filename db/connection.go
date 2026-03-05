@@ -14,7 +14,7 @@ import (
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 
-	"github.com/zzliekkas/flow/config"
+	"github.com/zzliekkas/flow/v2/config"
 	mysqldriver "gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"

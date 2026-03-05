@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
-	"github.com/zzliekkas/flow/cli"
+	"github.com/zzliekkas/flow/v2/cli"
 )
 
 // NewServerCommand 创建服务器命令

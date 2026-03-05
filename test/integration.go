@@ -14,8 +14,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	"github.com/zzliekkas/flow"
-	"github.com/zzliekkas/flow/db"
+	"github.com/zzliekkas/flow/v2"
+	"github.com/zzliekkas/flow/v2/db"
 )
 
 // IntegrationTest 提供集成测试支持

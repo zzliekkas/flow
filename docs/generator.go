@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zzliekkas/flow/app"
+	"github.com/zzliekkas/flow/v2/app"
 )
 
 // DocumentationGenerator 是整体文档生成器，协调各种类型的文档生成
@@ -647,10 +647,10 @@ func (g *DocumentationGenerator) generateIndexPage() error {
         <p>欢迎使用Flow框架文档。本文档提供了框架的详细说明和使用指南。</p>
         
         <h3>安装框架</h3>
-        <pre><code class="language-bash">go get github.com/zzliekkas/flow</code></pre>
+        <pre><code class="language-bash">go get github.com/zzliekkas/flow/v2</code></pre>
         
         <h3>创建项目</h3>
-        <pre><code class="language-bash">go run github.com/zzliekkas/flow/cmd/flow@latest new myproject</code></pre>
+        <pre><code class="language-bash">go run github.com/zzliekkas/flow/v2/cmd/flow@latest new myproject</code></pre>
         
         <h3>运行项目</h3>
         <pre><code class="language-bash">cd myproject

@@ -1,7 +1,7 @@
 package cloud
 
 import (
-	"github.com/zzliekkas/flow/cloud/providers"
+	"github.com/zzliekkas/flow/v2/cloud/providers"
 	"go.uber.org/dig"
 )
 

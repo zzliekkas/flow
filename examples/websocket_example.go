@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/zzliekkas/flow/websocket"
+	"github.com/zzliekkas/flow/v2/websocket"
 )
 
 // WebSocketExample 展示WebSocket的基本用法

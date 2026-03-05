@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/zzliekkas/flow"
-	"github.com/zzliekkas/flow/test"
+	"github.com/zzliekkas/flow/v2"
+	"github.com/zzliekkas/flow/v2/test"
 )
 
 // User 测试用户模型

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/zzliekkas/flow/queue"
+	"github.com/zzliekkas/flow/v2/queue"
 )
 
 // MemoryQueue 是基于内存的队列实现

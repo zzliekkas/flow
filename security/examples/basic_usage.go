@@ -3,8 +3,8 @@ package examples
 import (
 	"net/http"
 
-	"github.com/zzliekkas/flow"
-	"github.com/zzliekkas/flow/security"
+	"github.com/zzliekkas/flow/v2"
+	"github.com/zzliekkas/flow/v2/security"
 )
 
 func BasicSecurityExample() {

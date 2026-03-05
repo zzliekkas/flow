@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zzliekkas/flow/app"
+	"github.com/zzliekkas/flow/v2/app"
 )
 
 // ModelDocGenerator 用于生成数据模型文档的生成器

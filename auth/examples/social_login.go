@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/zzliekkas/flow"
-	"github.com/zzliekkas/flow/auth"
-	"github.com/zzliekkas/flow/auth/drivers"
+	"github.com/zzliekkas/flow/v2"
+	"github.com/zzliekkas/flow/v2/auth"
+	"github.com/zzliekkas/flow/v2/auth/drivers"
 )
 
 // User 是一个用户模型示例

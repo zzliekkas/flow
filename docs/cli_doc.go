@@ -1,7 +1,7 @@
 package docs
 
 import (
-	"github.com/zzliekkas/flow/app"
+	"github.com/zzliekkas/flow/v2/app"
 )
 
 // CLIDocGenerator 用于生成命令行工具文档的生成器

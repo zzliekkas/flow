@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/zzliekkas/flow"
-	"github.com/zzliekkas/flow/auth"
+	"github.com/zzliekkas/flow/v2"
+	"github.com/zzliekkas/flow/v2/auth"
 )
 
 // SessionStorage 定义会话存储接口

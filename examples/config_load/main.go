@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/zzliekkas/flow"
-	"github.com/zzliekkas/flow/config"
+	"github.com/zzliekkas/flow/v2"
+	"github.com/zzliekkas/flow/v2/config"
 )
 
 func main() {

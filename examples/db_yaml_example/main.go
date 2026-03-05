@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/zzliekkas/flow/config"
-	"github.com/zzliekkas/flow/db"
+	"github.com/zzliekkas/flow/v2/config"
+	"github.com/zzliekkas/flow/v2/db"
 )
 
 func main() {

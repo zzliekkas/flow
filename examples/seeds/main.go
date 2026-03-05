@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/zzliekkas/flow/db"
+	"github.com/zzliekkas/flow/v2/db"
 	"gorm.io/gorm"
 )
 

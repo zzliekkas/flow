@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/zzliekkas/flow/di"
+	"github.com/zzliekkas/flow/v2/di"
 )
 
 // ProviderConfig 国际化服务提供者配置
