@@ -178,7 +178,8 @@ engine.Shutdown(ctx) // 执行关闭钩子 + 停止 HTTP 服务器
 ## 10. 未来规划 (v2.1)
 
 以下可选包将在 v2.1 中拆分为独立 Go 模块（参见 MODULES.md）：
-- `cloud/` → `github.com/zzliekkas/flow-cloud`
+- `platform/` → `github.com/zzliekkas/flow-platform`
+- `logistics/` → `github.com/zzliekkas/flow-logistics`
 - `payment/` → `github.com/zzliekkas/flow-payment`
 - `storage/` → `github.com/zzliekkas/flow-storage`
 - `websocket/` → `github.com/zzliekkas/flow-websocket`
@@ -193,7 +194,8 @@ engine.Shutdown(ctx) // 执行关闭钩子 + 停止 HTTP 服务器
 
 | 原 import | 新 import | go get |
 |-----------|-----------|--------|
-| `flow/v2/cloud` | `github.com/zzliekkas/flow-cloud` | `go get github.com/zzliekkas/flow-cloud@v0.1.0` |
+| `flow/v2/platform` | `github.com/zzliekkas/flow-platform` | `go get github.com/zzliekkas/flow-platform@v0.1.0` |
+| `flow/v2/logistics` | `github.com/zzliekkas/flow-logistics` | `go get github.com/zzliekkas/flow-logistics@v0.1.0` |
 | `flow/v2/payment` | `github.com/zzliekkas/flow-payment` | `go get github.com/zzliekkas/flow-payment@v0.1.0` |
 | `flow/v2/storage` | `github.com/zzliekkas/flow-storage` | `go get github.com/zzliekkas/flow-storage@v0.1.0` |
 | `flow/v2/websocket` | `github.com/zzliekkas/flow-websocket` | `go get github.com/zzliekkas/flow-websocket@v0.1.0` |
@@ -215,7 +217,8 @@ import "github.com/zzliekkas/flow-storage/cloud"
 ```
 replace github.com/zzliekkas/flow-storage => ../flow-storage
 replace github.com/zzliekkas/flow-payment => ../flow-payment
-replace github.com/zzliekkas/flow-cloud => ../flow-cloud
+replace github.com/zzliekkas/flow-platform => ../flow-platform
+replace github.com/zzliekkas/flow-logistics => ../flow-logistics
 replace github.com/zzliekkas/flow-websocket => ../flow-websocket
 ```
 

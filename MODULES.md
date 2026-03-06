@@ -21,7 +21,8 @@
 
 | 原包 | 独立模块 | 版本 | 重依赖 |
 |------|---------|------|--------|
-| `cloud/` | [`github.com/zzliekkas/flow-cloud`](https://github.com/zzliekkas/flow-cloud) | v0.1.0 | aws-sdk-go-v2, opentelemetry |
+| `platform/` | [`github.com/zzliekkas/flow-platform`](https://github.com/zzliekkas/flow-platform) | v0.1.0 | aws-sdk-go-v2, opentelemetry |
+| `logistics/` | [`github.com/zzliekkas/flow-logistics`](https://github.com/zzliekkas/flow-logistics) | v0.1.0 | — |
 | `payment/` | [`github.com/zzliekkas/flow-payment`](https://github.com/zzliekkas/flow-payment) | v0.1.0 | stripe-go, paypal, alipay, wechatpay |
 | `storage/` | [`github.com/zzliekkas/flow-storage`](https://github.com/zzliekkas/flow-storage) | v0.1.0 | aliyun-oss, aws-s3, qiniu, cos, imaging |
 | `websocket/` | [`github.com/zzliekkas/flow-websocket`](https://github.com/zzliekkas/flow-websocket) | v0.1.0 | gorilla/websocket |
